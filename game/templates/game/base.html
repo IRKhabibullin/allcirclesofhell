@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    {% load static %}
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static 'game/main.css' %}">
+
+    <title>All circles of hell</title>
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+</head>
+<body>
+    <div class="d-flex" id="wrapper">
+        <!-- Sidebar -->
+        {% block sidebar %}{% include 'game/sidebar.html' %}{% endblock %}
+        <div class="main">
+            <header class="site-header">
+                <nav class="navbar navbar-expand-md navbar-dark bg-steel">
+                    <div class="container">
+                        <a class="navbar-brand mr-4" href=#>All circles of hell</a>
+                        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggle"
+                                aria-controls="navbarToggle" aria-expanded="false" aria-label="Toggle navigation">
+                            <span class="navbar-toggler-icon"></span>
+                        </button>
+                        <div class="collapse navbar-collapse" id="navbarToggle">
+                            <div class="navbar-nav mr-auto">
+                                <a class="nav-item nav-link" href="#">Home</a>
+                                <a class="nav-item nav-link" href="#">About</a>
+                            </div>
+                            <!-- Navbar Right Side -->
+                            <div class="navbar-nav mr-auto">
+        <!--                        {% if user.is_authenticated %}-->
+        <!--                            <a class="nav-item nav-link" href="#">New post</a>-->
+        <!--                            <a class="nav-item nav-link" href="#">Profile</a>-->
+        <!--                            <a class="nav-item nav-link" href="#">Logout</a>-->
+        <!--                        {% else %}-->
+                                    <a class="nav-item nav-link" href="#">Login</a>
+                                    <a class="nav-item nav-link" href="#">Register</a>
+        <!--                        {% endif %}-->
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </header>
+            {% block content %}{% include 'game/battlefield.html' %}{% endblock %}
+        </div>
+    </div>
+</body>
+</html>
