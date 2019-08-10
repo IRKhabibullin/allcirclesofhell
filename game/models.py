@@ -1,10 +1,9 @@
 from django.db import models
-from django.contrib.postgres.fields import JSONField
 
 
 class Effect(models.Model):
     name = models.CharField(max_length=50)
-    effects = JSONField()
+    effects = models.TextField()
 
 
 class Skill(models.Model):
