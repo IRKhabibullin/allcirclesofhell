@@ -13,18 +13,13 @@
 
             const Hex = Honeycomb.extendHex({ size: 30, orientation: 'flat' })
             const Grid = Honeycomb.defineGrid(Hex)
-            const corners = Hex().corners()
-            const hexSymbol = draw.symbol()
-                // map the corners' positions to a string and create a polygon
-                .polygon(corners.map(({ x, y }) => `${x},${y}`))
-                .attr('class', 'comb')
-                //.fill('transparent')
-                //.stroke({ width: 1, color: '#FF0000' })
+            const corners = Hex().corners().map(({ x, y }) => `${x},${y}`)
 
             // render 10,000 hexes
             Grid.rectangle({ width: 9, height: 8 }).forEach(hex => {
                 const { x, y } = hex.toPoint()
-                draw.use(hexSymbol)
+                draw.polygon(corners)
+                .attr('class', 'comb')
                 .translate(x, y);
             })
         }
