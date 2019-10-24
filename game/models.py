@@ -1,4 +1,7 @@
+from datetime import datetime
+
 from django.db import models
+from .mechanics.battlefield import Battlefield
 
 
 class Effect(models.Model):
@@ -43,3 +46,13 @@ class Hero(models.Model):
     skills = models.ManyToManyField(Skill)
     spells = models.ManyToManyField(Spell)
     img_path = models.TextField(default='./src/assets/hero.jpeg')
+
+
+class GameInstance(models.Model):
+    created = models.DateTimeField(default=datetime.now())
+    hero = models.ForeignKey(Hero, on_delete=models.CASCADE, null=True)
+    round = models.IntegerField(default=1)  # round in the game
+    # jsoned state of game. Need to save board state, shops assortment and so on
+    state = models.TextField(default='{}')
+
+    battlefield = Battlefield(8, 9)

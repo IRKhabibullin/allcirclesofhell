@@ -28,49 +28,9 @@
 </template>
 
 <script>
-
-  export default {
-    props: {
-      hero: Object
+    export default {
+        props: {
+            hero: Object
+        }
     }
-  }
 </script>
-
-<style lang="scss">
-  .vital-bars {
-    height: 100%;
-    width: 100%;
-  }
-
-  .circle-bar {
-    margin: 0 0.25em;
-    height: 50px;
-    width: 50px;
-    vertical-align: middle;
-    line-height: 50px;
-    font-size: 20px;
-    color: black;
-    border-radius: 100%;
-    text-align: center;
-    position: relative;
-  }
-
-  #hp-bar {
-    background: #ff0000;
-  }
-
-  #armor-bar {
-    background: #a8bdbc;
-  }
-
-  #dmg-bar {
-    background: #6e7dda;
-  }
-
-  .bar-value {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
-</style>

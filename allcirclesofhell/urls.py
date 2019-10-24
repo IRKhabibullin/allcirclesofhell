@@ -20,6 +20,7 @@ from game import views
 
 router = routers.DefaultRouter()
 router.register(r'heroes', views.HeroViewSet)
+router.register(r'heroes', views.GameViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
