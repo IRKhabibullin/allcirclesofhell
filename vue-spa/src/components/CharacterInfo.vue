@@ -16,23 +16,43 @@
 
         data () {
             return {
-                hero: null,
-                endpoint: 'http://localhost:8000',
+                hero: null
             }
         },
 
         created() {
             this.getCurrentHero();
+            this.getCurrentUserGames();
         },
 
         methods: {
             getCurrentHero() {
-                axios.get(this.endpoint + '/heroes/1/?format=json')
-                     .then(response => {this.hero = response.data;})
-                     .catch(error => {
-                         console.log('-----error-------');
-                         console.log(error);
-                     })
+                console.log('Token ' + localStorage.getItem('token'));
+                axios.get(localStorage.getItem('endpoint') + '/heroes/1/?format=json', {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {this.hero = response.data;})
+                .catch(error => {
+                    console.log('-----error-------');
+                    console.log(error);
+                })
+            },
+            getCurrentUserGames() {
+                axios.get(localStorage.getItem('endpoint') + '/games/list_by_user/', {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {
+                    console.log('games');
+                    console.log(response.data);
+                })
+                .catch(error => {
+                    console.log('Failed to get games');
+                    console.log(error);
+                })
             }
         }
     }
