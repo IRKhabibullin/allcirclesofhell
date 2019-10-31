@@ -21,6 +21,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class GameViewSet(viewsets.ViewSet):
+    permission_classes = (IsAuthenticated,)
     gm = GameManager()
     serializer_class = GameSerializer
 
@@ -46,12 +47,13 @@ class GameViewSet(viewsets.ViewSet):
         :return:
         """
         user_games = self.gm.get_games_by_user(request.user)
-        games_info = {_game.pk: {
-            'created': _game.created,
+        games_info = [{
+            'game_id': _game.pk,
+            'created': _game.created.strftime('%d %b %y %H:%M'),
             'hero_name': _game.hero.name,
             'hero_hp': _game.hero.health,
             'round': _game.round
-        } for _game in user_games}
+        } for _game in user_games]
         return Response(games_info)
 
     def create(self, request):

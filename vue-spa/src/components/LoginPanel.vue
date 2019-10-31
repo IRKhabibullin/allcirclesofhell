@@ -42,18 +42,18 @@
         methods: {
             logIn(evt) {
                 evt.preventDefault();
-                axios.post(localStorage.getItem('endpoint') + '/api-token-auth/', {
+                this.$http.post(localStorage.getItem('endpoint') + '/api-token-auth/', {
                     username: this.form.username,
                     password: this.form.password
                 })
                 .then(response => {
                     localStorage.setItem('token', response.data.token);
-                    this.$emit('login_state_changed', true, this.form.username);
+                    this.$emit('login_state_changed', 'logged_in', this.form.username);
                 })
                 .catch(error => {
                     console.log('Failed to log in');
                     console.log(error);
-                    alert(JSON.stringify('Wrong creds for user ' + this.form.username));
+                    alert(JSON.stringify('Wrong credentials'));
                     this.form.password = '';
                 });
             },

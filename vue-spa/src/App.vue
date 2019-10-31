@@ -3,16 +3,15 @@
         <!-- <Navbar></Navbar> -->
         <main class="row">
             <aside class="col-2 px-0 ml-4 mt-2 sidebar">
-                <div v-if="logged_in">
-                    <div>
-                        <label>{{ this.username }}</label>
-                        <b-button type="reset" variant="danger" v-on:click="setLoginState(false)">Log out</b-button>
-                    </div>
-                    <CharacterInfo></CharacterInfo>
+                <div v-show="game_state !== 'logged_out'">
+                    <label>{{ this.username }}</label>
+                    <b-button type="reset" variant="danger" v-on:click="setLoginState('logged_out')">Log out</b-button>
                 </div>
-                <LoginPanel @login_state_changed="setLoginState" v-else></LoginPanel>
+                <LoginPanel @login_state_changed="setLoginState" v-if="game_state === 'logged_out'"></LoginPanel>
+                <GamesList @game_selected="getGameById" v-else-if="game_state === 'logged_in'"></GamesList>
+                <CharacterInfo :hero="game_info.hero" v-else-if="game_state === 'game_loaded'"></CharacterInfo>
             </aside>
-            <div class="col px-0 playground">
+            <div v-if="game_state === 'game_loaded'" class="col px-0 playground">
                 <Playground></Playground>
             </div>
         </main>
@@ -24,26 +23,52 @@
     import CharacterInfo from './components/CharacterInfo'
     import Playground from './components/Playground'
     import LoginPanel from './components/LoginPanel'
+    import GamesList from './components/GamesList'
 
     localStorage.setItem('endpoint', 'http://localhost:8000');
 
     export default {
         data() {
             return {
-                logged_in: false,
-                username: ''
+                // game states:
+                //     logged_out
+                //     logged_in
+                //     game_loaded
+                //
+                //
+                game_state: 'logged_out',
+                username: '',
+                game_info: null
             }
         },
         components: {
             Navbar,
             CharacterInfo,
             Playground,
-            LoginPanel
+            LoginPanel,
+            GamesList
         },
         methods: {
             setLoginState(state, username) {
-                this.logged_in = state;
+                this.game_state = state;
                 this.username = username;
+            },
+            getGameById(game_id) {
+                this.$http.get(localStorage.getItem('endpoint') + '/games/' + game_id, {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {
+                    this.game_info = response.data;
+                    console.log('got game');
+                    console.log(this.game_info);
+                    this.game_state = 'game_loaded';
+                })
+                .catch(error => {
+                    console.log('Failed to get game');
+                    console.log(error);
+                })
             }
         }
     }
