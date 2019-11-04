@@ -2,7 +2,7 @@ from django.utils.timezone import now
 from django.contrib.auth.models import User
 
 from django.db import models
-from .mechanics.battlefield import Battlefield
+from .mechanics.board import Board
 
 
 class Effect(models.Model):
@@ -72,4 +72,18 @@ class GameInstance(models.Model):
     # jsoned state of game. Need to save board state, shops assortment and so on
     state = models.TextField(default='{}')
 
-    battlefield = Battlefield(8, 9)
+    def __init__(self, *args, **kwargs):
+        super(GameInstance, self).__init__(*args, **kwargs)
+        self.board = None
+
+    def init_board(self):
+        if not self.board:
+            if self.state != '{}':
+                # from self.state
+                pass
+            else:
+                self.board = Board(9, 11)
+
+    # def save_state(self):
+
+    # def save(self, *args, **kwargs):

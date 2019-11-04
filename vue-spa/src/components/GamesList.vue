@@ -1,5 +1,6 @@
 <template>
     <b-list-group class="align-items-start justify-content-start">
+        <!-- another b-list-group-item for new game creating -->
         <b-list-group-item href="#" class="flex-column" v-for="game in games" v-on:click="gameSelected(game.game_id)">
             <div>
                 <h5 class="mb-1 ">Hero: {{ game.hero_name }}</h5>
@@ -40,6 +41,7 @@
                 })
                 .catch(error => {
                     console.log('Failed to get games');
+                    // todo need to display it in b-list-group
                     console.log(error);
                 })
             },

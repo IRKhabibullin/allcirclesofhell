@@ -25,19 +25,6 @@ class GameViewSet(viewsets.ViewSet):
     gm = GameManager()
     serializer_class = GameSerializer
 
-    # def get_queryset(self):
-    #     """
-    #     This view should return a list of all the purchases
-    #     for the currently authenticated user.
-    #     """
-    #     user = self.request.user
-    #     print('passed user_id', self.request.query_params.get('user_id', None))
-    #     print('action:', self.action)
-    #     print('suffix:', self.suffix)
-    #     print('name:', self.name)
-    #     print('detail:', self.detail)
-    #     return self.gm.get_games_by_user(user)
-
     @action(detail=False)
     def list_by_user(self, request):
         """

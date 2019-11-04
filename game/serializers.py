@@ -26,7 +26,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
 class GameSerializer(serializers.HyperlinkedModelSerializer):
     hero = HeroSerializer(read_only=True)
+    board = serializers.SerializerMethodField('model_board')
+
+    def model_board(self, game):
+        return game.board.get_state()
 
     class Meta:
         model = GameInstance
-        fields = ['pk', 'hero', 'round', 'created']
+        fields = ['pk', 'hero', 'round', 'created', 'board']

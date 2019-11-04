@@ -21,9 +21,12 @@ class GameManager(object):
 
     def get_game(self, game_id):
         if game_id in self.game_instances:
+            self.game_instances[game_id].init_board()
             return self.game_instances[game_id]
         game_instance = GameInstance.objects.get(pk=game_id)
         if game_instance:
+            game_instance.init_board()
+            self.game_instances[game_instance.pk] = game_instance
             return game_instance
 
     def get_games_by_user(self, user):
