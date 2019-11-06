@@ -1,18 +1,28 @@
 <template>
     <div>
-        <svg id="drawing" class="text-left m-5"></svg>
-        <b-button variant="info" v-on:click="customThing()">Select comb</b-button>
+        <svg id="drawing" class="text-left m-4"></svg>
+        <!--<b-button variant="info" v-on:click="customThing()">Select comb</b-button>-->
     </div>
 </template>
 
 <script>
     import * as SVG from 'svg.js/dist/svg';
-    import * as Honeycomb from 'honeycomb-grid';
     import PriorityQueue from '../mechanics/structure'
 
+    function get_corners(size) {
+        let _corners = []
+        for (var i = 0; i < 6; i++) {
+            var angle_rad = Math.PI / 180 * 60 * i
+            var _x = size + size * Math.cos(angle_rad)
+            var _y = (Math.sqrt(3) * size / 2 + size * Math.sin(angle_rad))
+            _corners.push(_x.toFixed(2) + ',' + _y.toFixed(2))
+        }
+        return _corners
+    }
+
     const hex_size = 30
-    const Hex = Honeycomb.extendHex({size: hex_size, orientation: 'flat', 'tile_type': 'empty'})
-    const corners = Hex().corners().map(({ x, y }) => `${x},${y}`)
+    const corners = get_corners(hex_size)
+    console.log(corners)
 
     const neighbours_directions = [
         [1, 0], [1, -1], [0, -1],
@@ -20,15 +30,24 @@
     ]
 
     class Grid {
-        constructor(width, height) {
-            this.width = width;
-            this.height = height;
-            this.hexes = Honeycomb.defineGrid(Hex).rectangle({width: width, height: height});
+        constructor(radius, hexes) {
+            this.radius = radius;
+            this.hexes = hexes
+            this.height_offset = Math.sqrt(3) * (this.radius - 1) * hex_size
+            this.width_offset = Math.floor(this.radius / 2) * hex_size + 2 * Math.floor((this.radius - 1) / 2) * hex_size + hex_size / 2
+        }
+
+        hexToPoint(hex) {
+            return {'x': hex_size * (3/2 * hex.x) + this.width_offset,
+                    'y': hex_size * (Math.sqrt(3)/2 * hex.x  +  Math.sqrt(3) * hex.y) + this.height_offset
+            }
         }
 
         get([x, y]) {
-            var hex = this.hexes[x * this.height + y];
-            return hex;
+            var hex = this.hexes.filter(function(d) {return d.x == x && d.y == y})
+            if (hex.length > 0) {
+                return hex[0];
+            }
         }
 
         getById(hexId) {
@@ -40,7 +59,10 @@
         getNeighbours(hex) {
             let neighbors = []
             neighbours_directions.forEach(nd => {
-                neighbors.push(this.get([hex.x + nd[0], hex.y + nd[1]]))
+                let n_hex = this.get([hex.x + nd[0], hex.y + nd[1]])
+                if (n_hex) {
+                    neighbors.push(n_hex)
+                }
             })
             return neighbors
         }
@@ -48,21 +70,23 @@
 
     class Board {
         constructor(svg_field, board_data) {
-            var grid_width = (1.5 * board_data.width + 0.5) * hex_size
-            var grid_height = Math.sqrt(3) * (board_data.height + 0.5) * hex_size
-            this.grid = new Grid(board_data.width, board_data.height)
+            var grid_width = Math.round(board_data.radius - 1) * hex_size + 2 * board_data.radius * hex_size + 1
+            var grid_height = (2 * board_data.radius - 1) * Math.sqrt(3) * hex_size + 1
+
+            this.grid = new Grid(board_data.radius, board_data.hexes)
+            console.log('grid')
+            console.log(this.grid)
             this.svg = svg_field.size(grid_width, grid_height);
             this.tiles = this.svg.group();
             this.hero_tile = null
 
             board_data.hexes.forEach(board_hex => {
-                var hex = this.grid.get([board_hex.c, board_hex.r])
-                hex.tile_type = board_hex.type
+                var hex = this.grid.get([board_hex.x, board_hex.y])
+                //hex.tile_type = board_hex.type
                 if (hex.tile_type === 'hero_tile') {
                     this.hero_tile = hex
                 }
-                const {x, y} = hex.toPoint()
-                var coords = hex.cube()
+                const {x, y} = this.grid.hexToPoint(hex)
                 this.tiles.polygon(corners)
                 .attr('id', hex.x + ';' + hex.y)
                 .attr('class', hex.tile_type !== 'empty' ? 'obstacle_comb' : 'comb')
@@ -75,7 +99,7 @@
                 .attr('font-size', 9)
                 .translate(x + 30, y);
 
-                this.svg.text(coords.q + ';' + coords.r + ';' + coords.s)
+                this.svg.text(hex.q + ';' + hex.r + ';' + hex.s)
                 .attr('text-anchor', "middle")
                 .attr('fill', "black")
                 .attr('font-size', 9)

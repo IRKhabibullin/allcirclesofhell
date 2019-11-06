@@ -82,7 +82,7 @@ class GameInstance(models.Model):
                 # from self.state
                 pass
             else:
-                self.board = Board(9, 11)
+                self.board = Board(6)
 
     # def save_state(self):
 
