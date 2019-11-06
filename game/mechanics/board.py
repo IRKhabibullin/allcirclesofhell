@@ -24,7 +24,7 @@ class Board:
                     continue
                 extras = {}
                 if [new_pos[0], new_pos[1]] == hero_tile:
-                    extras['_type'] = 'hero_tile'
+                    extras['_type'] = 'hero'
                 elif int(random() * 100) < OBSTACLE_CHANCE:
                     extras['_type'] = 'obstacle'
                 new_hex = Hex(*new_pos, **extras)
@@ -36,15 +36,6 @@ class Board:
         start_hex = Hex(0, 0)
         self.hexes[(0, 0)] = start_hex
         create_neighbors(start_hex)
-
-        # for r in range(height):
-        #     for c in range(width):
-        #         extras = {}
-        #         if [c, r] == hero_tile:
-        #             extras['_type'] = 'hero_tile'
-        #         elif int(random() * 100) < OBSTACLE_CHANCE:
-        #             extras['_type'] = 'obstacle'
-        #         self.hexes.append(Hex(c, r, **extras))
 
     def get_state(self):
         self.hexes[(-2, 2)]['r'] = -1
@@ -63,7 +54,7 @@ def Hex(x: int, y: int, _type: str = 'empty'):
         'q': x,
         's': s,
         'r': -x - s,
-        'type': _type
+        'tile_type': _type
     }
 
 

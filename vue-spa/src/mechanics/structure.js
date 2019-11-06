@@ -17,11 +17,9 @@ class PriorityQueue {
   peek() {
     return this._heap[top];
   }
-  push(...values) {
-    values.forEach(value => {
-      this._heap.push(value);
-      this._siftUp();
-    });
+  push(value) {
+    this._heap.push(value);
+    this._siftUp();
     return this.size();
   }
   pop() {

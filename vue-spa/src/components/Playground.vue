@@ -20,11 +20,14 @@
         return _corners
     }
 
+    function heuristic(a, b) {
+        return Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
+    }
+
     const hex_size = 30
     const corners = get_corners(hex_size)
-    console.log(corners)
 
-    const neighbours_directions = [
+    const neighbors_directions = [
         [1, 0], [1, -1], [0, -1],
         [-1, 0], [-1, 1], [0, 1]
     ]
@@ -56,15 +59,45 @@
             return this.get(coords);
         }
 
-        getNeighbours(hex) {
+        getNeighbors(hex) {
             let neighbors = []
-            neighbours_directions.forEach(nd => {
+            neighbors_directions.forEach(nd => {
                 let n_hex = this.get([hex.x + nd[0], hex.y + nd[1]])
                 if (n_hex) {
                     neighbors.push(n_hex)
                 }
             })
             return neighbors
+        }
+        findPath(source_hex, target_hex) {
+            var self = this;
+            var distances = {};
+            var came_from = {};
+            distances[source_hex.x + ';' +  source_hex.y] = 0
+
+            function check_neighbors(_hex) {
+                var neighbors = [];
+                self.getNeighbors(_hex).forEach(neighbor => {
+                    if (neighbor.tile_type !== 'empty') {
+                        return;
+                    }
+                    if (distances[neighbor.x + ';' + neighbor.y] <= distances[_hex.x + ';' + _hex.y]) {
+                        return;
+                    }
+                    distances[neighbor.x + ';' + neighbor.y] = distances[_hex.x + ';' + _hex.y] + 1;
+                    came_from[neighbor.x + ';' + neighbor.y] = _hex;
+                    neighbors.push(neighbor);
+                });
+                neighbors.forEach(neighbor => { check_neighbors(neighbor) });
+            }
+            check_neighbors(source_hex)
+            var path = []
+            var current_tile = came_from[target_hex.x + ';' + target_hex.y]
+            while (current_tile !== source_hex) {
+                path.push(current_tile)
+                current_tile = came_from[current_tile.x + ';' + current_tile.y]
+            }
+            return path
         }
     }
 
@@ -74,23 +107,20 @@
             var grid_height = (2 * board_data.radius - 1) * Math.sqrt(3) * hex_size + 1
 
             this.grid = new Grid(board_data.radius, board_data.hexes)
-            console.log('grid')
-            console.log(this.grid)
             this.svg = svg_field.size(grid_width, grid_height);
             this.tiles = this.svg.group();
             this.hero_tile = null
 
-            board_data.hexes.forEach(board_hex => {
-                var hex = this.grid.get([board_hex.x, board_hex.y])
-                //hex.tile_type = board_hex.type
-                if (hex.tile_type === 'hero_tile') {
+            this.grid.hexes.forEach(hex => {
+                if (hex.tile_type === 'hero') {
                     this.hero_tile = hex
                 }
                 const {x, y} = this.grid.hexToPoint(hex)
+                hex.image = this.getBackgroundImage(hex.tile_type)
                 this.tiles.polygon(corners)
                 .attr('id', hex.x + ';' + hex.y)
                 .attr('class', hex.tile_type !== 'empty' ? 'obstacle_comb' : 'comb')
-                .attr('fill', this.getBackgroundImage(hex.tile_type))
+                .attr('fill', hex.image)
                 .translate(x, y);
 
                 this.svg.text(hex.x + ';' + hex.y)
@@ -120,21 +150,38 @@
         tileClickedHandler(event) {
             var _hex = this.grid.getById(event.target.id)
             console.log(_hex)
-            console.log(this.grid.getNeighbours(_hex))
-            //console.log(this.grid.findPath(this.hero_tile, _hex))
+            var path = this.grid.findPath(this.hero_tile, _hex)
+            path.forEach(hex => {
+                document.getElementById(hex.x + ';' + hex.y).setAttribute('fill', 'green')
+            })
         }
         tileMouseoverHandler(event) {
             var _hex = this.grid.getById(event.target.id)
-            this.grid.getNeighbours(_hex).forEach(neighbour => {
-                let _polygon = document.getElementById(neighbour.x + ';' + neighbour.y)
-                _polygon.setAttribute('fill', 'green')
+            /*this.grid.getNeighbors(_hex).forEach(neighbor => {
+                if (neighbor.image.node) {
+                    neighbor.image.node.setAttribute('style', 'display: none')
+                } else {
+                    document.getElementById(neighbor.x + ';' + neighbor.y).setAttribute('fill', 'white')
+                }
+            })*/
+            var path = this.grid.findPath(this.hero_tile, _hex)
+            path.forEach(hex => {
+                document.getElementById(hex.x + ';' + hex.y).setAttribute('fill', 'green')
             })
         }
         tileMouseoutHandler(event) {
             var _hex = this.grid.getById(event.target.id)
-            this.grid.getNeighbours(_hex).forEach(neighbour => {
-                let _polygon = document.getElementById(neighbour.x + ';' + neighbour.y)
-                _polygon.setAttribute('fill', '#f0e256')
+            /*this.grid.getNeighbors(_hex).forEach(neighbor => {
+                if (neighbor.image.node) {
+                    neighbor.image.node.setAttribute('style', 'display: inline')
+                } else {
+                    document.getElementById(neighbor.x + ';' + neighbor.y).setAttribute('fill', neighbor.image)
+                }
+            })*/
+            this.grid.hexes.forEach(neighbor => {
+                if (neighbor.tile_type === 'empty') {
+                    document.getElementById(neighbor.x + ';' + neighbor.y).setAttribute('fill', '#f0e256')
+                }
             })
         }
         customMethod() {
@@ -144,8 +191,8 @@
         }
         getBackgroundImage(_type) {
             if (_type === 'obstacle') {
-                return this.svg.image('./src/assets/rock.jpg', hex_size, hex_size)
-            } else if (_type === 'hero_tile') {
+                return this.svg.image('./src/assets/rock.jpg', hex_size * 2, hex_size * 2)
+            } else if (_type === 'hero') {
                 return this.svg.image('./src/assets/board_hero_sized.jpg')
             }
             return '#f0e256'
