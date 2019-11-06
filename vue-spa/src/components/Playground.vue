@@ -1,25 +1,58 @@
 <template>
     <div>
         <svg id="drawing" class="text-left m-5"></svg>
-        <b-button variant="info" v-on:click="this.board.customMethod()">Select comb</b-button>
+        <b-button variant="info" v-on:click="customThing()">Select comb</b-button>
     </div>
 </template>
 
 <script>
     import * as SVG from 'svg.js/dist/svg';
     import * as Honeycomb from 'honeycomb-grid';
+    import PriorityQueue from '../mechanics/structure'
 
     const hex_size = 30
     const Hex = Honeycomb.extendHex({size: hex_size, orientation: 'flat', 'tile_type': 'empty'})
     const corners = Hex().corners().map(({ x, y }) => `${x},${y}`)
 
+    const neighbours_directions = [
+        [1, 0], [1, -1], [0, -1],
+        [-1, 0], [-1, 1], [0, 1]
+    ]
+
+    class Grid {
+        constructor(width, height) {
+            this.width = width;
+            this.height = height;
+            this.hexes = Honeycomb.defineGrid(Hex).rectangle({width: width, height: height});
+        }
+
+        get([x, y]) {
+            var hex = this.hexes[x * this.height + y];
+            return hex;
+        }
+
+        getById(hexId) {
+            var coords = hexId.split(';');
+            coords = [parseInt(coords[0]), parseInt(coords[1])];
+            return this.get(coords);
+        }
+
+        getNeighbours(hex) {
+            let neighbors = []
+            neighbours_directions.forEach(nd => {
+                neighbors.push(this.get([hex.x + nd[0], hex.y + nd[1]]))
+            })
+            return neighbors
+        }
+    }
+
     class Board {
         constructor(svg_field, board_data) {
             var grid_width = (1.5 * board_data.width + 0.5) * hex_size
             var grid_height = Math.sqrt(3) * (board_data.height + 0.5) * hex_size
+            this.grid = new Grid(board_data.width, board_data.height)
             this.svg = svg_field.size(grid_width, grid_height);
             this.tiles = this.svg.group();
-            this.grid = Honeycomb.defineGrid(Hex).rectangle({ width: board_data.width, height: board_data.height })
             this.hero_tile = null
 
             board_data.hexes.forEach(board_hex => {
@@ -49,24 +82,41 @@
                 .translate(x + 30, y + 35);
             })
         }
-        tileClickedHandler(event) {
-            var coords = event.target.id.split(';')
+        getHexById(hexId) {
+            // for some reason this.grid.get function doesn't work, so i need to calculate it myself
+            // need to open an issue on github
+            var coords = hexId.split(';')
             coords = [parseInt(coords[0]), parseInt(coords[1])]
-            _hex = this.someMethod(coords)
-            console.log(coords)
-            console.log('grid 2')
-            console.log(_hex)
-            console.log(this.grid[0])
-            console.log(this.grid[16])
-            console.log(this.grid[0].distance(this.grid[16]))
-            console.log(this.board)
+            return this.getHexByCoords(coords)
         }
-        someMethod(hexId) {
-            this.grid.get(hexId)
+        getHexByCoords(coords) {
+            var _hex = this.grid[coords[0] * this.grid.height + coords[1]]
+            return _hex
+        }
+        tileClickedHandler(event) {
+            var _hex = this.grid.getById(event.target.id)
+            console.log(_hex)
+            console.log(this.grid.getNeighbours(_hex))
+            //console.log(this.grid.findPath(this.hero_tile, _hex))
+        }
+        tileMouseoverHandler(event) {
+            var _hex = this.grid.getById(event.target.id)
+            this.grid.getNeighbours(_hex).forEach(neighbour => {
+                let _polygon = document.getElementById(neighbour.x + ';' + neighbour.y)
+                _polygon.setAttribute('fill', 'green')
+            })
+        }
+        tileMouseoutHandler(event) {
+            var _hex = this.grid.getById(event.target.id)
+            this.grid.getNeighbours(_hex).forEach(neighbour => {
+                let _polygon = document.getElementById(neighbour.x + ';' + neighbour.y)
+                _polygon.setAttribute('fill', '#f0e256')
+            })
         }
         customMethod() {
-            //_hex = this.grid.get([4, 3])
             this.tiles.on('click', this.tileClickedHandler, this);
+            this.tiles.on('mouseover', this.tileMouseoverHandler, this);
+            this.tiles.on('mouseout', this.tileMouseoutHandler, this);
         }
         getBackgroundImage(_type) {
             if (_type === 'obstacle') {
@@ -91,6 +141,11 @@
             const svg_container = SVG(document.getElementById('drawing'));
             this.board = new Board(svg_container, this.board_data);
             this.board.customMethod()
+        },
+        methods: {
+            customThing() {
+                console.log(this.board.grid.get([4, 6]))
+            }
         }
     }
 </script>
