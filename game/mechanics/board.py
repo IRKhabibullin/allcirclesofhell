@@ -13,9 +13,9 @@ class Board:
         self.radius = radius
         self.hexes = {}
 
-        def create_neighbors(hex: Hex):
+        def create_neighbors(_hex: Hex):
             for bias in self.position_biases:
-                new_pos = tuple(sum(x) for x in zip((hex['x'], hex['y']), bias))
+                new_pos = tuple(sum(x) for x in zip((_hex['x'], _hex['y']), bias))
                 if new_pos in self.hexes:
                     continue
                 if abs(new_pos[0] + new_pos[1]) >= self.radius:
@@ -37,10 +37,15 @@ class Board:
         self.hexes[(0, 0)] = start_hex
         create_neighbors(start_hex)
 
+    def getNeighbors(self, _hex):
+        _neighbors = []
+        for bias in self.position_biases:
+            _neighbor = self.hexes.get(tuple(sum(x) for x in zip((_hex['x'], _hex['y']), bias)), None)
+            if _neighbor:
+                _neighbors.append(_neighbor)
+        return _neighbors
+
     def get_state(self):
-        self.hexes[(-2, 2)]['r'] = -1
-        self.hexes[(2, -2)]['r'] = 1
-        self.hexes[(-1, 2)]['r'] = -2
         return {'radius': self.radius,
                 'hexes': list(self.hexes.values())
                 }

@@ -10,6 +10,7 @@
                 <LoginPanel @login_state_changed="setLoginState" v-if="game_state === 'logged_out'"></LoginPanel>
                 <GamesList @game_selected="getGameById" v-else-if="game_state === 'logged_in'"></GamesList>
                 <CharacterInfo :hero="game_info.hero" v-else-if="game_state === 'game_loaded'"></CharacterInfo>
+                <b-button type="reset" variant="danger" v-if="game_state === 'game_loaded'" v-on:click="setLoginState('logged_in')">Games list</b-button>
             </aside>
             <Playground :board_data="game_info.board" v-if="game_state === 'game_loaded'" class="col-5 px-0 playground"></Playground>
         </main>

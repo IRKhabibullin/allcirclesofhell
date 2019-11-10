@@ -1,67 +1,46 @@
-const top = 0;
-const parent = i => ((i + 1) >>> 1) - 1;
-const left = i => (i << 1) + 1;
-const right = i => (i + 1) << 1;
-
 class PriorityQueue {
-  constructor(comparator = (a, b) => a > b) {
-    this._heap = [];
-    this._comparator = comparator;
-  }
-  size() {
-    return this._heap.length;
-  }
-  isEmpty() {
-    return this.size() == 0;
-  }
-  peek() {
-    return this._heap[top];
-  }
-  push(value) {
-    this._heap.push(value);
-    this._siftUp();
-    return this.size();
-  }
-  pop() {
-    const poppedValue = this.peek();
-    const bottom = this.size() - 1;
-    if (bottom > top) {
-      this._swap(top, bottom);
+    constructor() {
+        this.container = [];
     }
-    this._heap.pop();
-    this._siftDown();
-    return poppedValue;
-  }
-  replace(value) {
-    const replacedValue = this.peek();
-    this._heap[top] = value;
-    this._siftDown();
-    return replacedValue;
-  }
-  _greater(i, j) {
-    return this._comparator(this._heap[i], this._heap[j]);
-  }
-  _swap(i, j) {
-    [this._heap[i], this._heap[j]] = [this._heap[j], this._heap[i]];
-  }
-  _siftUp() {
-    let node = this.size() - 1;
-    while (node > top && this._greater(node, parent(node))) {
-      this._swap(node, parent(node));
-      node = parent(node);
+    display() {
+        console.log(this.container);
     }
-  }
-  _siftDown() {
-    let node = top;
-    while (
-      (left(node) < this.size() && this._greater(left(node), node)) ||
-      (right(node) < this.size() && this._greater(right(node), node))
-    ) {
-      let maxChild = (right(node) < this.size() && this._greater(right(node), left(node))) ? right(node) : left(node);
-      this._swap(node, maxChild);
-      node = maxChild;
+    isEmpty() {
+        return this.container.length === 0;
     }
-  }
+    size() {
+        return this.container.length
+    }
+    push(hex, priority) {
+        let currElem = new this.Element(hex, priority);
+        let addedFlag = false;
+        for (let i = 0; i < this.container.length; i++) {
+            if (currElem.priority < this.container[i].priority) {
+                this.container.splice(i, 0, currElem);
+                addedFlag = true;
+                break;
+            }
+        }
+        if (!addedFlag) {
+            this.container.push(currElem);
+        }
+    }
+    peek() {
+        return this.container.pop().hex;
+    }
+    pop() {
+        return this.container.shift().hex;
+    }
+    clear() {
+        this.container = [];
+    }
 }
+
+PriorityQueue.prototype.Element = class {
+    constructor(hex, priority) {
+        this.hex = hex;
+        this.priority = priority;
+    }
+};
 
 export default PriorityQueue
