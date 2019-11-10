@@ -6,7 +6,7 @@ OBSTACLE_CHANCE = 15
 
 class Board:
     position_biases = [
-        [1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]
+        (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
     ]
 
     def __init__(self, radius: int):
@@ -37,7 +37,7 @@ class Board:
         self.hexes[(0, 0)] = start_hex
         create_neighbors(start_hex)
 
-    def getNeighbors(self, _hex):
+    def get_neighbors(self, _hex):
         _neighbors = []
         for bias in self.position_biases:
             _neighbor = self.hexes.get(tuple(sum(x) for x in zip((_hex['x'], _hex['y']), bias)), None)

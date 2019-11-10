@@ -11,11 +11,6 @@ function get_corners(size) {
     return _corners
 }
 
-function distance(a, b) {
-    return Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.s - b.s))
-}
-
-
 const hex_size = 30
 const corners = get_corners(hex_size)
 
@@ -191,7 +186,7 @@ class Board {
         document.getElementById(_destination.x + ';' + _destination.y).classList.remove("comb");
         document.getElementById(_destination.x + ';' + _destination.y).classList.add("obstacle_comb");
         var coords = this.grid.hexToPoint(_destination)
-        this.hero_image.move(coords.x, coords.y)
+        this.hero_image.animate(300, '>').move(coords.x, coords.y)
 
         this.hero_tile.tile_type = 'empty'
         document.getElementById(this.hero_tile.x + ';' + this.hero_tile.y).classList.remove("obstacle_comb");
