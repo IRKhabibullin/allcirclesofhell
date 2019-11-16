@@ -1,18 +1,22 @@
 <template>
     <div id="app">
-        <!-- <Navbar></Navbar> -->
         <main class="row">
-            <aside class="col-2 px-0 ml-4 mt-2 sidebar">
+            <aside class="col-2 px-0 ml-4 mt-2">
                 <div v-show="game_state !== 'logged_out'">
                     <label>{{ this.username }}</label>
                     <b-button type="reset" variant="danger" v-on:click="setLoginState('logged_out')">Log out</b-button>
                 </div>
                 <LoginPanel @login_state_changed="setLoginState" v-if="game_state === 'logged_out'"></LoginPanel>
                 <GamesList @game_selected="getGameById" v-else-if="game_state === 'logged_in'"></GamesList>
-                <CharacterInfo :hero="game_info.hero" v-else-if="game_state === 'game_loaded'"></CharacterInfo>
+                <CharacterInfo :hero="game_info.game.hero" v-else-if="game_state === 'game_loaded'"></CharacterInfo>
                 <b-button type="reset" variant="danger" v-if="game_state === 'game_loaded'" v-on:click="setLoginState('logged_in')">Games list</b-button>
             </aside>
-            <Playground :board_data="game_info.board" v-if="game_state === 'game_loaded'" class="col-5 px-0 playground"></Playground>
+            <Playground
+                :units="game_info.units"
+                :board_data="game_info.board"
+                v-if="game_state === 'game_loaded'"
+                class="col-10 px-0"
+            ></Playground>
         </main>
     </div>
 </template>
@@ -85,14 +89,6 @@
         -moz-osx-font-smoothing: grayscale;
         text-align: center;
         color: #2c3e50;
-        height: 100%;
-    }
-
-    sidebar {
-        position: absolute;
-    }
-
-    playground {
         height: 100%;
     }
 </style>

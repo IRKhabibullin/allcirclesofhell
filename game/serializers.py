@@ -1,4 +1,4 @@
-from game.models import Hero, Item, GameInstance
+from game.models import Hero, Item, GameModel, Unit
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
@@ -26,11 +26,23 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 
 class GameSerializer(serializers.HyperlinkedModelSerializer):
     hero = HeroSerializer(read_only=True)
-    board = serializers.SerializerMethodField('model_board')
-
-    def model_board(self, game):
-        return game.board.get_state()
 
     class Meta:
-        model = GameInstance
-        fields = ['pk', 'hero', 'round', 'created', 'board']
+        model = GameModel
+        fields = ['pk', 'round', 'hero']
+
+
+class UnitSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Unit
+        fields = ['pk', 'name', 'health', 'damage', 'attack_range', 'armor', 'skills', 'spells', 'img_path',
+                  'move_range', 'position']
+
+
+class GameInstanceSerializer(serializers.Serializer):
+    board = serializers.SerializerMethodField('game_board')
+    game = GameSerializer(read_only=True)
+    units = UnitSerializer(many=True, read_only=True)
+
+    def game_board(self, game):
+        return game.board.get_state()

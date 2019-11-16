@@ -4,7 +4,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from game.serializers import HeroSerializer, UserSerializer, GameSerializer
+from game.serializers import HeroSerializer, UserSerializer, GameInstanceSerializer
 from .mechanics.game_manager import GameManager
 
 
@@ -23,7 +23,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class GameViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
     gm = GameManager()
-    serializer_class = GameSerializer
+    serializer_class = GameInstanceSerializer
 
     @action(detail=False)
     def list_by_user(self, request):
@@ -45,7 +45,7 @@ class GameViewSet(viewsets.ViewSet):
 
     def create(self, request):
         game_instance = self.gm.new_game(request.data.user_id)
-        serializer = GameSerializer(game_instance)
+        serializer = GameInstanceSerializer(game_instance)
         return Response(serializer.data)
 
     def destroy(self, request):
@@ -56,5 +56,5 @@ class GameViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         game_instance = self.gm.get_game(pk)
-        serializer = GameSerializer(game_instance)
+        serializer = GameInstanceSerializer(game_instance)
         return Response(serializer.data)

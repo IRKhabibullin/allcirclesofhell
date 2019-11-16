@@ -1,7 +1,26 @@
 <template>
-    <div>
-        <svg id="drawing" class="text-left m-4"></svg>
+    <div class="row">
+        <svg id="drawing" class="text-left m-4 col-6"></svg>
         <!--<b-button variant="info" v-on:click="customThing()">Select comb</b-button>-->
+        <div class="col-2 height=100%">
+            <b-card v-if="!!board" v-show="board.mouse_over_unit">
+                <b-card-title>{{ board.current_unit.name }}</b-card-title>
+                <b-list-group>
+                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                        Health
+                        <b-badge variant="primary" pill>{{ board.current_unit.health }}</b-badge>
+                    </b-list-group-item>
+                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                        Damage
+                        <b-badge variant="primary" pill>{{ board.current_unit.damage }}</b-badge>
+                    </b-list-group-item>
+                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                        Armor
+                        <b-badge variant="primary" pill>{{ board.current_unit.armor }}</b-badge>
+                    </b-list-group-item>
+                </b-list-group>
+            </b-card>
+        </div>
     </div>
 </template>
 
@@ -11,19 +30,18 @@
 
     export default {
         props: {
-            board_data: null
+            board_data: null,
+            units: null
         },
         data() {
             return {
-                board: null
+                board: null,
+                current_hex: null
             }
         },
         mounted() {
             const svg_container = SVG(document.getElementById('drawing'));
-            this.board = new Board(svg_container, this.board_data);
-            this.board.customMethod()
-        },
-        methods: {
+            this.board = new Board(svg_container, this.board_data, this.units);
         }
     }
 </script>
