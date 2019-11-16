@@ -20,7 +20,7 @@ class BoardTestCase(TestCase):
             neighbors = self.board.get_neighbors(center_hex)
             self.assertEqual(len(neighbors), 6)
             for _bias in center_biases:
-                self.assertIn(self.board.hexes.get((center_hex['x'] + _bias[0], center_hex['y'] + _bias[1]), None),
+                self.assertIn(self.board.hexes.get((center_hex['q'] + _bias[0], center_hex['r'] + _bias[1]), None),
                               neighbors)
 
             # test corner hex, which should have 3 neighbors
@@ -31,7 +31,7 @@ class BoardTestCase(TestCase):
             neighbors = self.board.get_neighbors(corner_hex)
             self.assertEqual(len(neighbors), 3)
             for _bias in corner_biases:
-                self.assertIn(self.board.hexes.get((corner_hex['x'] + _bias[0], corner_hex['y'] + _bias[1]), None),
+                self.assertIn(self.board.hexes.get((corner_hex['q'] + _bias[0], corner_hex['r'] + _bias[1]), None),
                               neighbors)
 
             if self.board.radius > 2:
@@ -43,7 +43,7 @@ class BoardTestCase(TestCase):
                 neighbors = self.board.get_neighbors(side_hex)
                 self.assertEqual(len(neighbors), 4)
                 for _bias in side_biases:
-                    self.assertIn(self.board.hexes.get((side_hex['x'] + _bias[0], side_hex['y'] + _bias[1]), None),
+                    self.assertIn(self.board.hexes.get((side_hex['q'] + _bias[0], side_hex['r'] + _bias[1]), None),
                                   neighbors)
 
 
