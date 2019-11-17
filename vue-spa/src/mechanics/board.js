@@ -182,8 +182,6 @@ class Board {
     }
 
     getHexById(hexId) {
-        // for some reason this.grid.get function doesn't work, so i need to calculate it myself
-        // need to open an issue on github
         var coords = hexId.split(';')
         coords = [parseInt(coords[0]), parseInt(coords[1])]
         return this.getHexByCoords(coords)
@@ -195,10 +193,14 @@ class Board {
     }
 
     getBackgroundImage(_type) {
-        if (_type === 'obstacle') {
-            return this.svg.image('./src/assets/rock.jpg', hex_size * 2, hex_size * 2)
+        switch (_type) {
+            case 'obstacle':
+                return this.svg.image('./src/assets/rock.jpg', hex_size * 2, hex_size * 2)
+            case 'path':
+                return 'green'
+            default:
+                return '#f0e256'
         }
-        return '#f0e256'
     }
 
     setBackgroundImage(_hex) {
@@ -230,6 +232,7 @@ class Board {
 
         function resetPath() {
             self.hero.path.forEach(hex => {
+                hex.image = self.getBackgroundImage('empty')
                 document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image);
             })
 //            probably need to save calculated path and look here for another var like "path_chosen"
@@ -239,7 +242,8 @@ class Board {
         function buildPath() {
             self.hero.path = self.grid.findPath(self.hero.hex, _hex);
             self.hero.path.forEach(hex => {
-                document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', 'green')
+                hex.image = self.getBackgroundImage('path')
+                document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image)
             })
         }
 
