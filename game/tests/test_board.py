@@ -1,4 +1,5 @@
 from unittest import TestCase
+from random import random
 from ..mechanics.board import Board
 
 
@@ -46,4 +47,54 @@ class BoardTestCase(TestCase):
                     self.assertIn(self.board.hexes.get((side_hex['q'] + _bias[0], side_hex['r'] + _bias[1]), None),
                                   neighbors)
 
+    def test_clear_board(self):
+        test_hex = None
+        while not test_hex:
+            _coords = (int(random() * 2 * self.board.radius - self.board.radius),
+                       int(random() * 2 * self.board.radius - self.board.radius))
+            if _coords in self.board.hexes and self.board.hexes[_coords]['occupied_by'] == 'empty':
+                test_hex = self.board.hexes[_coords]
+        test_hex['occupied_by'] = 'testing value'
+        self.board.clear_board()
+        self.assertEqual(self.board.hexes[(0, self.board.radius // 2)]['occupied_by'], 'hero')
+        self.assertIn(test_hex['occupied_by'], ['empty', 'obstacle'])
 
+    def test_place_object(self):
+        class GameObject:
+            def __init__(self, pk, position):
+                self.pk = pk
+                self.position = position
+
+        test_pk, test_position = 'test_pk', (3, -3)
+        test_object = GameObject(test_pk, test_position)
+        self.board.place_game_object(test_object)
+        self.assertEqual(self.board.hexes[test_position]['occupied_by'], test_pk)
+
+    def test_get_hexes_in_range(self):
+        hex_ranges = [
+            # center
+            {
+                'hex': self.board.hexes.get((0, 0)),
+                'ranges': [(1, 7), (2, 19), (3, 37), (4, 61), (5, 91), (6, 91)]
+            },
+            # corner
+            {
+                'hex': self.board.hexes.get((0, self.board.radius - 1)),
+                'ranges': [(1, 4), (2, 9), (3, 16), (4, 25), (5, 36), (6, 47), (7, 58), (8, 69), (9, 80), (10, 91),
+                           (11, 91)]
+            },
+            # side
+            {
+                'hex': self.board.hexes.get((-self.board.radius + 2, -1)),
+                'ranges': [(1, 5), (2, 11), (3, 19), (4, 29), (5, 40), (6, 52), (7, 63), (8, 74), (9, 85), (10, 91),
+                           (11, 91)]
+            }
+        ]
+
+        for _data in hex_ranges:
+            hexes_in_range = self.board.get_hexes_in_range(_data['hex'], 0)
+            self.assertIn((_data['hex']['q'], _data['hex']['r']), hexes_in_range)
+
+            for _range in _data['ranges']:
+                hexes_in_range = self.board.get_hexes_in_range(_data['hex'], _range[0])
+                self.assertTrue(len(hexes_in_range), _range[1])

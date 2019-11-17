@@ -52,6 +52,7 @@ class Board:
         return hexes_in_range
 
     def place_game_object(self, game_object):
+        # maybe need to check for occupied. And add param 'forced_placing'
         self.hexes[game_object.position]['occupied_by'] = game_object.pk
 
     def clear_board(self):
