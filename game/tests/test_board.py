@@ -56,7 +56,6 @@ class BoardTestCase(TestCase):
                 test_hex = self.board.hexes[_coords]
         test_hex['occupied_by'] = 'testing value'
         self.board.clear_board()
-        self.assertEqual(self.board.hexes[(0, self.board.radius // 2)]['occupied_by'], 'hero')
         self.assertIn(test_hex['occupied_by'], ['empty', 'obstacle'])
 
     def test_place_object(self):

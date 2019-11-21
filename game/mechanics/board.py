@@ -30,8 +30,6 @@ class Board:
         start_hex = Hex(0, 0)
         self.hexes[(0, 0)] = start_hex
         create_neighbors(start_hex)
-        self.hero_hex = self.hexes.get((0, self.radius // 2))
-        self.hero_hex['occupied_by'] = 'hero'
 
     def get_neighbors(self, _hex):
         _neighbors = []
@@ -41,14 +39,16 @@ class Board:
                 _neighbors.append(_neighbor)
         return _neighbors
 
-    def get_hexes_in_range(self, center_hex: dict, _range: int) -> dict:
+    def get_hexes_in_range(self, center_hex: dict, _range: int, occupied_by=None) -> dict:
         hexes_in_range = {}
         for q in range(-_range, _range + 1):
             for r in range(max(-_range, -q - _range),
                            min(_range, -q + _range) + 1):
                 _q, _r = q + center_hex['q'], r + center_hex['r']
                 if (_q, _r) in self.hexes:
-                    hexes_in_range[(_q, _r)] = self.hexes[(_q, _r)]
+                    _hex = self.hexes[(_q, _r)]
+                    if not occupied_by or _hex['occupied_by'] in occupied_by:
+                        hexes_in_range[(_q, _r)] = _hex
         return hexes_in_range
 
     def place_game_object(self, game_object):
@@ -60,8 +60,10 @@ class Board:
             _hex['occupied_by'] = 'empty'
             if int(random() * 100) < OBSTACLE_CHANCE:
                 _hex['occupied_by'] = 'obstacle'
-        self.hero_hex = self.hexes.get((0, self.radius // 2))
-        self.hero_hex['occupied_by'] = 'hero'
+
+    @staticmethod
+    def distance(hex_a, hex_b):
+        return max(abs(hex_a['x'] - hex_b['x']), abs(hex_a['y'] - hex_b['y']), abs(hex_a['z'] - hex_b['z']))
 
     def get_state(self):
         return {'radius': self.radius,

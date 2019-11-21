@@ -1,3 +1,4 @@
+from django.conf.urls import url
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
@@ -14,4 +15,5 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
     path('api-token-auth/', auth_views.obtain_auth_token),
+    url('game/', views.GameAction.as_view(), name='game_action')
 ]

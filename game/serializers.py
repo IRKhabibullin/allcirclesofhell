@@ -15,7 +15,8 @@ class HeroSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Hero
-        fields = ['name', 'health', 'damage', 'attack_range', 'armor', 'skills', 'spells', 'img_path', 'suit', 'weapon']
+        fields = ['name', 'health', 'damage', 'attack_range', 'armor', 'skills', 'spells', 'img_path', 'suit', 'weapon',
+                  'position', 'moves']
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):

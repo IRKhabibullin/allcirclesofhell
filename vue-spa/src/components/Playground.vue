@@ -1,7 +1,7 @@
 <template>
     <div class="row">
         <svg id="drawing" class="text-left m-4 col-6"></svg>
-        <!--<b-button variant="info" v-on:click="customThing()">Select comb</b-button>-->
+        <!--<b-button variant="info" v-on:click="makeAction()">Select comb</b-button>-->
         <div class="col-2 height=100%">
             <b-card v-if="!!board" v-show="board.mouse_over_unit">
                 <b-card-title>{{ board.current_unit.name }}</b-card-title>
@@ -41,7 +41,19 @@
         },
         mounted() {
             const svg_container = SVG(document.getElementById('drawing'));
-            this.board = new Board(svg_container, this.board_data, this.units);
+            this.board = new Board(this, svg_container, this.board_data, this.units);
+        },
+        methods: {
+            makeAction(action, destination) {
+                console.log('making action:', action, destination)
+                this.$emit('game_action', action, destination);
+            },
+            handleAction(actionData) {
+                console.log('actionData');
+                console.log(actionData);
+                console.log(this);
+                this.board.handleAction(actionData);
+            }
         }
     }
 </script>

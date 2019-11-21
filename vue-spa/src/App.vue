@@ -16,6 +16,8 @@
                 :board_data="game_info.board"
                 v-if="game_state === 'game_loaded'"
                 class="col-10 px-0"
+                @game_action="makeAction"
+                ref="playground"
             ></Playground>
         </main>
     </div>
@@ -70,6 +72,26 @@
                 })
                 .catch(error => {
                     console.log('Failed to get game');
+                    console.log(error);
+                })
+            },
+            makeAction(action, destination) {
+                console.log('making action in app')
+                let action_data = {
+                    'action': action,
+                    'game_id': this.game_info.game.pk,
+                    'destination': destination
+                }
+                this.$http.post(localStorage.getItem('endpoint') + '/game/', action_data, {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {
+                    this.$refs.playground.handleAction(response.data);
+                })
+                .catch(error => {
+                    console.log('Failed to handle action');
                     console.log(error);
                 })
             }

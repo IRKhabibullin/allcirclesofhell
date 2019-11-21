@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
+
 from game.models import Hero
 from rest_framework import viewsets
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -22,7 +24,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 class GameViewSet(viewsets.ViewSet):
     permission_classes = (IsAuthenticated,)
-    gm = GameManager()
+    gm = GameManager.instance()
     serializer_class = GameInstanceSerializer
 
     @action(detail=False)
@@ -55,6 +57,23 @@ class GameViewSet(viewsets.ViewSet):
         pass
 
     def retrieve(self, request, pk=None):
-        game_instance = self.gm.get_game(pk)
+        game_instance = self.gm.get_game(str(pk))
+        game_instance.init_round()
         serializer = GameInstanceSerializer(game_instance)
         return Response(serializer.data)
+
+
+class GameAction(APIView):
+    permission_classes = (IsAuthenticated,)
+    gm = GameManager.instance()
+
+    def post(self, request):
+        """
+        Handle actions
+        """
+        response_data = {'action': request.data['action']}
+        if request.data['action'] == 'move':
+            game_instance = self.gm.get_game(str(request.data['game_id']))
+            response_data['allowed'] = game_instance.make_move(request.data['destination'])
+            response_data.update(GameInstanceSerializer(game_instance).data)
+        return Response(response_data)
