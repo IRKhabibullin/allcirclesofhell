@@ -43,6 +43,9 @@
             const svg_container = SVG(document.getElementById('drawing'));
             this.board = new Board(this, svg_container, this.board_data, this.units);
         },
+        beforeDestroy() {
+            this.$emit('close_game')
+        },
         methods: {
             makeAction(action, destination) {
                 console.log('making action:', action, destination)

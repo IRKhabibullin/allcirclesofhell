@@ -17,6 +17,7 @@
                 v-if="game_state === 'game_loaded'"
                 class="col-10 px-0"
                 @game_action="makeAction"
+                @close_game="closeGame"
                 ref="playground"
             ></Playground>
         </main>
@@ -92,6 +93,21 @@
                 })
                 .catch(error => {
                     console.log('Failed to handle action');
+                    console.log(error);
+                })
+            },
+            closeGame() {
+                let data = {
+                    'game_id': this.game_info.game.pk
+                }
+                this.$http.post(localStorage.getItem('endpoint') + '/games/close_game/', data, {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {})
+                .catch(error => {
+                    console.log('Failed to close game');
                     console.log(error);
                 })
             }

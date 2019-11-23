@@ -45,6 +45,20 @@ class GameViewSet(viewsets.ViewSet):
         } for _game in user_games]
         return Response(games_info)
 
+    @action(detail=False, methods=['post'])
+    def close_game(self, request, pk=None):
+        # need to pass not game_id but uuid. It removes bug, when same game initialized in two browser tabs
+        # also need to handle case when browser tab is closed
+        """
+        Removes initialized game_instance from game_manager
+        :param request:
+        :return:
+        """
+        removed = str(request.data['game_id']) in self.gm.game_instances
+        if removed:
+            del self.gm.game_instances[str(request.data['game_id'])]
+        return Response({'removed': removed})
+
     def create(self, request):
         game_instance = self.gm.new_game(request.data.user_id)
         serializer = GameInstanceSerializer(game_instance)
