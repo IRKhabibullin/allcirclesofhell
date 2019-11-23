@@ -14,6 +14,7 @@
             <Playground
                 :units="game_info.units"
                 :board_data="game_info.board"
+                :hero="game_info.game.hero"
                 v-if="game_state === 'game_loaded'"
                 class="col-10 px-0"
                 @game_action="makeAction"

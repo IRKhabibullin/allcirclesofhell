@@ -37,7 +37,7 @@ class UnitSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Unit
         fields = ['pk', 'name', 'health', 'damage', 'attack_range', 'armor', 'skills', 'spells', 'img_path',
-                  'move_range', 'position']
+                  'move_range', 'position', 'moves', 'attack_hexes']
 
 
 class GameInstanceSerializer(serializers.Serializer):

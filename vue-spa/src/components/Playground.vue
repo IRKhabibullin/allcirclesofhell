@@ -31,7 +31,8 @@
     export default {
         props: {
             board_data: null,
-            units: null
+            units: null,
+            hero: null
         },
         data() {
             return {
@@ -41,20 +42,17 @@
         },
         mounted() {
             const svg_container = SVG(document.getElementById('drawing'));
-            this.board = new Board(this, svg_container, this.board_data, this.units);
+            this.board = new Board(this, svg_container, this.board_data, this.units, this.hero);
         },
         beforeDestroy() {
             this.$emit('close_game')
         },
         methods: {
             makeAction(action, destination) {
-                console.log('making action:', action, destination)
                 this.$emit('game_action', action, destination);
             },
             handleAction(actionData) {
-                console.log('actionData');
-                console.log(actionData);
-                console.log(this);
+                console.log('actionData', actionData);
                 this.board.handleAction(actionData);
             }
         }

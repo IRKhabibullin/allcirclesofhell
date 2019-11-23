@@ -6,7 +6,6 @@ from game import views
 from rest_framework.authtoken import views as auth_views
 
 router = routers.DefaultRouter()
-router.register(r'heroes', views.HeroViewSet)
 router.register(r'games', views.GameViewSet, basename='games')
 router.register(r'users', views.UserViewSet)
 

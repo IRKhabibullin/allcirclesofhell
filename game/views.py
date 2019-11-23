@@ -1,28 +1,27 @@
 from django.contrib.auth.models import User
 
-from game.models import Hero
 from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from game.serializers import HeroSerializer, UserSerializer, GameInstanceSerializer
+from game.serializers import UserSerializer, GameInstanceSerializer
 from .mechanics.game_manager import GameManager
 
 
-class HeroViewSet(viewsets.ModelViewSet):
-    permission_classes = (IsAuthenticated,)
-    queryset = Hero.objects.all()
-    serializer_class = HeroSerializer
-
-
 class UserViewSet(viewsets.ModelViewSet):
+    """
+    Viewset for users
+    """
     permission_classes = (IsAuthenticated,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
 class GameViewSet(viewsets.ViewSet):
+    """
+    Viewset for managing game instances
+    """
     permission_classes = (IsAuthenticated,)
     gm = GameManager.instance()
     serializer_class = GameInstanceSerializer
@@ -47,30 +46,30 @@ class GameViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def close_game(self, request, pk=None):
-        # need to pass not game_id but uuid. It removes bug, when same game initialized in two browser tabs
-        # also need to handle case when browser tab is closed
         """
         Removes initialized game_instance from game_manager
         :param request:
         :return:
         """
+        # need to pass not game_id but uuid. It removes bug, when same game initialized in two browser tabs
+        # also need to handle case when browser tab is closed
         removed = str(request.data['game_id']) in self.gm.game_instances
         if removed:
             del self.gm.game_instances[str(request.data['game_id'])]
         return Response({'removed': removed})
 
     def create(self, request):
+        """
+        Create new game for current user
+        """
         game_instance = self.gm.new_game(request.data.user_id)
         serializer = GameInstanceSerializer(game_instance)
         return Response(serializer.data)
 
-    def destroy(self, request):
-        pass
-
-    def update(self, request):
-        pass
-
     def retrieve(self, request, pk=None):
+        """
+        Get game with given id
+        """
         game_instance = self.gm.get_game(str(pk))
         game_instance.init_round()
         serializer = GameInstanceSerializer(game_instance)
@@ -78,6 +77,9 @@ class GameViewSet(viewsets.ViewSet):
 
 
 class GameAction(APIView):
+    """
+    View for game actions, like moving, attacking, using spells etc
+    """
     permission_classes = (IsAuthenticated,)
     gm = GameManager.instance()
 
@@ -86,8 +88,7 @@ class GameAction(APIView):
         Handle actions
         """
         response_data = {'action': request.data['action']}
-        if request.data['action'] == 'move':
-            game_instance = self.gm.get_game(str(request.data['game_id']))
-            response_data['allowed'] = game_instance.make_move(request.data['destination'])
-            response_data.update(GameInstanceSerializer(game_instance).data)
+        game_instance = self.gm.get_game(str(request.data['game_id']))
+        response_data['allowed'] = game_instance.hero_action(request.data)
+        response_data.update(GameInstanceSerializer(game_instance).data)
         return Response(response_data)
