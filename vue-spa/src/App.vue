@@ -85,6 +85,7 @@
                     }
                 })
                 .then(response => {
+                    this.game_info.game.hero = response.data.game.hero;
                     this.$refs.playground.handleAction(response.data);
                 })
                 .catch(error => {

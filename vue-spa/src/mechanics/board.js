@@ -272,22 +272,17 @@ class Board {
         if (actionData.action == 'move' && actionData.allowed) {
             this.moveHero(actionData.game.hero);
             this.resetPath();
-
-            this.update_units(actionData.units);
-            actionData.board.hexes.forEach(_hex => {
-                this.grid.get([_hex.q, _hex.r]).occupied_by = _hex.occupied_by;
-            })
         } else if (actionData.action == 'attack' && actionData.allowed) {
             this.animate('attack', {
                 'svg_elem': this.hero.image,
                 'source': this.grid.hexToPoint(this.hero.hex),
                 'target': this.grid.hexToPoint(this.units[actionData.target].hex)
             })
-            this.update_units(actionData.units);
-            actionData.board.hexes.forEach(_hex => {
-                this.grid.get([_hex.q, _hex.r]).occupied_by = _hex.occupied_by;
-            })
         }
+        this.update_units(actionData.units, actionData.units_actions);
+        actionData.board.hexes.forEach(_hex => {
+            this.grid.get([_hex.q, _hex.r]).occupied_by = _hex.occupied_by;
+        })
     }
 
     animate(animation, data) {
@@ -295,12 +290,13 @@ class Board {
             let svg_elem = data['svg_elem'];
             let source_point = data['source'];
             let target_point = data['target'];
-            svg_elem.animate(100, '-').move(target_point.x, target_point.y);
-            svg_elem.animate(100, '-').move(source_point.x, source_point.y);
+            svg_elem
+                .animate(100, '-', data['delay']).move(target_point.x, target_point.y)
+                .animate(100, '-').move(source_point.x, source_point.y);
         }
     }
 
-    update_units(new_units) {
+    update_units(new_units, units_actions) {
         let units_to_update = Object.keys(this.units).filter(u => u in new_units);
         let units_to_add = Object.keys(new_units).filter(u => !(u in this.units));
         let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
@@ -349,6 +345,16 @@ class Board {
             });
             unit.attack_hexes = attack_hexes;
             this.units[unit_id] = unit;
+        })
+
+        units_actions.forEach(u_action => {
+            let unit = this.units[u_action.source];
+            this.animate('attack', {
+                'svg_elem': unit.image,
+                'source': this.grid.hexToPoint(unit.hex),
+                'target': this.grid.hexToPoint(this.hero.hex),
+                'delay': 400
+            })
         })
     }
 

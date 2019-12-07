@@ -76,25 +76,27 @@ class GameInstance:
         for unit in self.units.values():
             _unit_hex = self.board.hexes[unit.position]
             unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
-            unit.attack_hexes = list(self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty']).keys())
+            unit.attack_hexes = list(
+                self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty', 'hero']).keys())
 
-    def hero_action(self, action_data: dict) -> bool:
+    def hero_action(self, action_data: dict) -> dict:
         """
         Make hero action
         """
+        result = {'allowed': False}
         if action_data['action'] == 'move':
             destination = self.board.hexes.get(tuple(action_data['destination']), None)
             if not destination:
-                return False
-            result = self.hero_move(destination)
-            if not result:
+                return result
+            result['allowed'] = self.hero_move(destination)
+            if not result['allowed']:
                 return result
         if action_data['action'] == 'attack':
-            result = actions.attack(self, self.game.hero, self.units[action_data['target']])
-            if not result:
+            result['allowed'] = actions.attack(self, self.game.hero, self.units[action_data['target']])
+            if not result['allowed']:
                 return result
         # update hero's and units' possible moves
-        self.units_action()
+        result['units_actions'] = self.units_action()
         self.update_moves()
         return result
 
@@ -116,12 +118,22 @@ class GameInstance:
         print(f'move to {destination} allowed')
         return True
 
-    def units_action(self):
+    def units_action(self) -> list:
         """
         Units' actions. Follows after hero's action
         """
+        units_actions = []
         for unit in self.units.values():
-            self.unit_move(unit)
+            # try to find target to attack
+            targets = [_hex for _hex in unit.attack_hexes if self.board.hexes[_hex]['occupied_by'] == 'hero']
+            if targets:
+                # suppose units can attack only hero for now
+                if actions.attack(self, unit, self.game.hero):
+                    units_actions.append({'source': unit.pk})
+            else:
+                # try to move somewhere
+                self.unit_move(unit)
+        return units_actions
 
     def unit_move(self, unit: Unit):
         """

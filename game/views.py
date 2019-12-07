@@ -89,6 +89,6 @@ class GameAction(APIView):
         """
         response_data = request.data
         game_instance = self.gm.get_game(str(request.data['game_id']))
-        response_data['allowed'] = game_instance.hero_action(request.data)
+        response_data.update(game_instance.hero_action(request.data))
         response_data.update(GameInstanceSerializer(game_instance).data)
         return Response(response_data)
