@@ -18,6 +18,16 @@ const neighbors_directions = [
     [1, 0], [1, -1], [0, -1],
     [-1, 0], [-1, 1], [0, 1]
 ]
+const colors = {
+    'tileBackground': '#f0e256',
+    'path': 'green',
+    'heroMoves': '#5D8AAD',
+    'unitMoves': '#EE5A3A',
+    'crossMoves': '#E1330D',  // unit's and hero's moves intersection
+    'target': '#0f7cdb'
+}
+
+var selectedAction = 'move';
 
 class Grid {
     /**
@@ -121,7 +131,7 @@ class Grid {
             }
             var neighbors = this.getNeighbors(current);
             neighbors.forEach(next => {
-                if (next.occupied_by !== 'empty') {
+                if (next.occupied_by == 'obstacle') {
                     return;
                 }
                 let nextId = next.q + ';' + next.r;
@@ -166,7 +176,8 @@ class Board {
                 .on('mouseout', this.heroMouseoutHandler, this),
             'path': [],
             'moves': [],
-            'hex': this.grid.get(hero.position)
+            'hex': this.grid.get(hero.position),
+            'attack_range': hero.attack_range
         };
         hero.moves.forEach(_pos => {
             this.hero.moves.push(this.grid.get(_pos));
@@ -183,7 +194,7 @@ class Board {
                 .attr('fill', hex.image)
                 .translate(x, y);
 
-            this.svg.text(hex.q + ';' + hex.r)
+            /*this.svg.text(hex.q + ';' + hex.r)
                 .attr('text-anchor', "middle")
                 .attr('fill', "black")
                 .attr('font-size', 9)
@@ -193,17 +204,27 @@ class Board {
                 .attr('text-anchor', "middle")
                 .attr('fill', "black")
                 .attr('font-size', 9)
-                .translate(x + 30, y + 35);
+                .translate(x + 30, y + 35);*/
         });
         this.tiles.on('click', this.tileClickedHandler, this);
+        this.units = units;
 
-        units.forEach(unit => {
+        for (var unit_id in this.units) {
+            let unit = this.units[unit_id];
+            let _hex = this.grid.get(unit.position);
+            _hex.occupied_by = unit.pk;
+            unit.hex = _hex;
+
+            // create image and move it to unit's position
             unit.image = this.svg.image(unit.img_path)
                 .attr('id', 'u_' + unit.pk)
                 .on('mouseover', this.unitMouseoverHandler, this)
-                .on('mouseout', this.unitMouseoutHandler, this);
-            let _hex = this.grid.get(unit.position);
-            unit.hex = _hex;
+                .on('mouseout', this.unitMouseoutHandler, this)
+                .on('click', this.unitClickedHandler, this);
+            let unit_coords = this.grid.hexToPoint(_hex);
+            unit.image.move(unit_coords.x, unit_coords.y);
+
+            // settings moves and attack hexes according to their positions
             let moves = [];
             unit.moves.forEach(_pos => {
                 moves.push(this.grid.get(_pos));
@@ -214,13 +235,11 @@ class Board {
                 attack_hexes.push(this.grid.get(_pos));
             });
             unit.attack_hexes = attack_hexes;
-            _hex.occupied_by = unit.pk;
-            let unit_coords = this.grid.hexToPoint(_hex);
-            unit.image.move(unit_coords.x, unit_coords.y);
-            this.units[unit.pk] = unit;
-        })
+        }
         this.current_unit = this.units[0];
         this.show_unit_card = false;  // variable for UnitCard element in Vue component
+        this.selectedAction = 'move';
+        this.altPressed = false;
     }
 
     getHexById(hexId) {
@@ -239,9 +258,9 @@ class Board {
             case 'obstacle':
                 return this.svg.image('./src/assets/rock.jpg', hex_size * 2, hex_size * 2)
             case 'path':
-                return 'green'
+                return colors.path
             default:
-                return '#f0e256'
+                return colors.tileBackground
         }
     }
 
@@ -254,22 +273,83 @@ class Board {
             this.moveHero(actionData.game.hero);
             this.resetPath();
 
-            actionData.units.forEach(_unit => {
-                this.units[_unit.pk].health = _unit.health;
-                this.units[_unit.pk].moves = [];
-                _unit.moves.forEach(_pos => {
-                    this.units[_unit.pk].moves.push(this.grid.get(_pos));
-                });
-                this.units[_unit.pk].attack_hexes = [];
-                _unit.attack_hexes.forEach(_pos => {
-                    this.units[_unit.pk].attack_hexes.push(this.grid.get(_pos));
-                });
-                this.moveUnit(this.units[_unit.pk], _unit.position);
+            this.update_units(actionData.units);
+            actionData.board.hexes.forEach(_hex => {
+                this.grid.get([_hex.q, _hex.r]).occupied_by = _hex.occupied_by;
             })
+        } else if (actionData.action == 'attack' && actionData.allowed) {
+            this.animate('attack', {
+                'svg_elem': this.hero.image,
+                'source': this.grid.hexToPoint(this.hero.hex),
+                'target': this.grid.hexToPoint(this.units[actionData.target].hex)
+            })
+            this.update_units(actionData.units);
             actionData.board.hexes.forEach(_hex => {
                 this.grid.get([_hex.q, _hex.r]).occupied_by = _hex.occupied_by;
             })
         }
+    }
+
+    animate(animation, data) {
+        if (animation == 'attack') {
+            let svg_elem = data['svg_elem'];
+            let source_point = data['source'];
+            let target_point = data['target'];
+            svg_elem.animate(100, '-').move(target_point.x, target_point.y);
+            svg_elem.animate(100, '-').move(source_point.x, source_point.y);
+        }
+    }
+
+    update_units(new_units) {
+        let units_to_update = Object.keys(this.units).filter(u => u in new_units);
+        let units_to_add = Object.keys(new_units).filter(u => !(u in this.units));
+        let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
+
+        units_to_update.forEach(unit_id => {
+            let _unit = new_units[unit_id];
+            this.units[unit_id].health = _unit.health;
+            this.units[unit_id].moves = [];
+            this.moveUnit(this.units[unit_id], _unit.position);
+            _unit.moves.forEach(_pos => {
+                this.units[unit_id].moves.push(this.grid.get(_pos));
+            });
+            this.units[_unit.pk].attack_hexes = [];
+            _unit.attack_hexes.forEach(_pos => {
+                this.units[unit_id].attack_hexes.push(this.grid.get(_pos));
+            });
+        })
+        units_to_remove.forEach(unit_id => {
+            this.units[unit_id].image.remove();
+            delete this.units[unit_id];
+        })
+        units_to_add.forEach(unit_id => {
+            let unit = new_units[unit_id]
+            let _hex = this.grid.get(unit.position);
+            _hex.occupied_by = unit.pk;
+            unit.hex = _hex;
+
+            // create image and move it to unit's position
+            unit.image = this.svg.image(unit.img_path)
+                .attr('id', 'u_' + unit.pk)
+                .on('mouseover', this.unitMouseoverHandler, this)
+                .on('mouseout', this.unitMouseoutHandler, this)
+                .on('click', this.unitClickedHandler, this);
+            let unit_coords = this.grid.hexToPoint(_hex);
+            unit.image.move(unit_coords.x, unit_coords.y);
+
+            // settings moves and attack hexes according to their positions
+            let moves = [];
+            unit.moves.forEach(_pos => {
+                moves.push(this.grid.get(_pos));
+            });
+            unit.moves = moves;
+            let attack_hexes = [];
+            unit.attack_hexes.forEach(_pos => {
+                attack_hexes.push(this.grid.get(_pos));
+            });
+            unit.attack_hexes = attack_hexes;
+            this.units[unit_id] = unit;
+        })
     }
 
     moveUnit(unit, position) {
@@ -281,7 +361,7 @@ class Board {
         document.getElementById(destination.q + ';' + destination.r).classList.remove("comb");
         document.getElementById(destination.q + ';' + destination.r).classList.add("obstacle_comb");
         var coords = this.grid.hexToPoint(destination);
-        unit.image.animate(300, '>').move(coords.x, coords.y);
+        unit.image.animate(200, '>').delay(200).move(coords.x, coords.y);
 
         document.getElementById(unit.hex.q + ';' + unit.hex.r).classList.remove("obstacle_comb");
         document.getElementById(unit.hex.q + ';' + unit.hex.r).classList.add("comb");
@@ -298,7 +378,7 @@ class Board {
         document.getElementById(destination_hex.q + ';' + destination_hex.r).classList.remove("comb");
         document.getElementById(destination_hex.q + ';' + destination_hex.r).classList.add("obstacle_comb");
         var coords = this.grid.hexToPoint(destination_hex);
-        this.hero.image.animate(300, '>').move(coords.x, coords.y);
+        this.hero.image.animate(200, '>').move(coords.x, coords.y);
 
         this.hero.hex.occupied_by = 'empty';
         document.getElementById(this.hero.hex.q + ';' + this.hero.hex.r).classList.remove("obstacle_comb");
@@ -328,20 +408,67 @@ class Board {
         })
     }
 
+    showMoves() {
+        this.hero.moves.forEach(_hex => {
+            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', colors.heroMoves);
+        });
+        for (var unit_id in this.units) {
+            let unit = this.units[unit_id];
+            unit.attack_hexes.forEach(hex => {
+                document.getElementById(hex.q + ';' + hex.r)
+                    .setAttribute('fill', this.hero.moves.includes(hex) ? colors.crossMoves : colors.unitMoves);
+            })
+        };
+    }
+
+    hideMoves() {
+        for (var unit_id in this.units) {
+            let unit = this.units[unit_id];
+            unit.attack_hexes.forEach(hex => {
+                document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image);
+            })
+        };
+        this.hero.moves.forEach(_hex => {
+            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', _hex.image);
+        });
+    }
+
+    keydownHandler(event) {
+        if (event.keyCode == 18) {
+            this.altPressed = true;
+            this.showMoves();
+        }
+    }
+
+    keyupHandler(event) {
+        if (event.keyCode == 18) {
+            this.altPressed = false;
+            this.hideMoves();
+        }
+    }
+
+    actionSelected(actionName) {
+        selectedAction = actionName;
+    }
+
 // handlers
     tileClickedHandler(event) {
         var self = this;
         var _hex = this.grid.getById(event.target.id);
 
+        if (selectedAction == 'attack') {
+            selectedAction = 'move'
+        }
+
         if (this.grid.distance(_hex, this.hero.hex) === 1) {
-            this.component.makeAction('move', [_hex.q, _hex.r]);
+            this.component.makeAction({'action': 'move', 'destination': [_hex.q, _hex.r]});
         } else if (this.hero.path.length > 0) {
             if (_hex != this.hero.path[0]) {
                 self.resetPath();
                 self.buildPath(_hex);
             } else {
                 let hex_in_path = this.hero.path[this.hero.path.length - 1];
-                this.component.makeAction('move', [hex_in_path.q, hex_in_path.r]);
+                this.component.makeAction({'action': 'move', 'destination': [hex_in_path.q, hex_in_path.r]});
             }
         } else {
             self.buildPath(_hex);
@@ -349,29 +476,55 @@ class Board {
     }
 
     unitMouseoverHandler(event) {
+        this.current_unit = this.units[event.target.id.slice(-1)];
         this.show_unit_card = true;
-        this.units[event.target.id.slice(-1)].attack_hexes.forEach(hex => {
-            document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', '#CE3030');
-        });
+        if (selectedAction == 'attack') {
+            let unit_hex = this.current_unit.hex;
+            if (this.grid.distance(unit_hex, this.hero.hex) <= this.hero.attack_range) {
+                document.getElementById(unit_hex.q + ';' + unit_hex.r).setAttribute('fill', colors.target);
+            }
+        }
     }
 
     unitMouseoutHandler(event) {
+        this.current_unit = this.units[event.target.id.slice(-1)];
         this.show_unit_card = false;
-        this.units[event.target.id.slice(-1)].attack_hexes.forEach(hex => {
-            document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image);
-        });
+        if (selectedAction == 'attack') {
+            let unit_hex = this.current_unit.hex;
+            document.getElementById(unit_hex.q + ';' + unit_hex.r).setAttribute('fill', unit_hex.image);
+        }
+    }
+
+    unitClickedHandler(event) {
+        var self = this;
+        var _unit = this.units[event.target.id.slice(-1)];
+        document.getElementById(_unit.hex.q + ';' + _unit.hex.r).setAttribute('fill', _unit.hex.image);
+
+        if (this.grid.distance(_unit.hex, this.hero.hex) === 1) {
+            this.component.makeAction({'action': 'attack', 'target': _unit.pk});
+        } else if (this.hero.path.length > 0) {
+            if (_unit.hex != this.hero.path[0]) {
+                self.resetPath();
+                self.buildPath(_unit.hex);
+            } else {
+                let hex_in_path = this.hero.path[this.hero.path.length - 1];
+                this.component.makeAction({'action': 'move', 'destination': [hex_in_path.q, hex_in_path.r]});
+            }
+        } else {
+            self.buildPath(_unit.hex);
+        }
     }
 
     heroMouseoverHandler(event) {
-        this.hero.moves.forEach(_hex => {
-            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', '#5D8AAD');
-        });
+//        this.hero.moves.forEach(_hex => {
+//            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', colors.heroMoves);
+//        });
     }
 
     heroMouseoutHandler(event) {
-        this.hero.moves.forEach(_hex => {
-            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', _hex.image);
-        });
+//        this.hero.moves.forEach(_hex => {
+//            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', _hex.image);
+//        });
     }
 // handlers
 }

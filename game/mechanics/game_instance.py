@@ -1,7 +1,8 @@
 import math
 from random import shuffle
 
-from game.models import GameModel, Unit
+from game.mechanics import actions
+from game.models import GameModel, Unit, Hero
 from game.mechanics.board import Board
 
 
@@ -23,7 +24,7 @@ class GameInstance:
             pass
         else:
             self.board = Board(6)
-        self.units = []
+        self.units = {}
 
     def init_round(self):
         """
@@ -32,7 +33,7 @@ class GameInstance:
         Setting hero position
         Counting and placing units
         """
-        self.units = []
+        self.units = {}
         self.board.clear_board()
 
         self.game.hero.position = (0, self.board.radius // 2)
@@ -62,12 +63,20 @@ class GameInstance:
                 _unit_hex = self.board.hexes[unit.position]
                 unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
                 unit.attack_hexes = list(self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty']).keys())
-                self.units.append(unit)
+                self.units[unit.pk] = unit
             points_remain = int(points - u_count * unit_level)
             if points_remain:
                 place_units(points_remain, unit_level // 2)
 
         place_units(self.game.round, max_unit_level)
+
+    def update_moves(self):
+        hero_position = self.board.hexes.get(self.game.hero.position, None)
+        self.game.hero.moves = list(self.board.get_hexes_in_range(hero_position, 1, ['empty']).keys())
+        for unit in self.units.values():
+            _unit_hex = self.board.hexes[unit.position]
+            unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
+            unit.attack_hexes = list(self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty']).keys())
 
     def hero_action(self, action_data: dict) -> bool:
         """
@@ -80,15 +89,14 @@ class GameInstance:
             result = self.hero_move(destination)
             if not result:
                 return result
-            self.units_action()
-
-            # update hero's and units' possible moves
-            self.game.hero.moves = list(self.board.get_hexes_in_range(destination, 1, ['empty']).keys())
-            for unit in self.units:
-                _unit_hex = self.board.hexes[unit.position]
-                unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
-                unit.attack_hexes = list(self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty']).keys())
-            return result
+        if action_data['action'] == 'attack':
+            result = actions.attack(self, self.game.hero, self.units[action_data['target']])
+            if not result:
+                return result
+        # update hero's and units' possible moves
+        self.units_action()
+        self.update_moves()
+        return result
 
     def hero_move(self, destination: 'Hex') -> bool:
         """
@@ -112,7 +120,7 @@ class GameInstance:
         """
         Units' actions. Follows after hero's action
         """
-        for unit in self.units:
+        for unit in self.units.values():
             self.unit_move(unit)
 
     def unit_move(self, unit: Unit):
@@ -129,3 +137,19 @@ class GameInstance:
             self.board.hexes[unit.position]['occupied_by'] = 'empty'
             unit.position = _move_pos
             self.board.place_game_object(unit)
+
+    def damage_instance(self, source, target, damage):
+        # apply damage modifiers
+        # call pre-damage spells
+        target.health -= damage
+        # call after-damage spells
+        if target.health <= 0:
+            self.on_death(target)
+
+    def on_death(self, target):
+        if isinstance(target, Hero):
+            # game over
+            pass
+        elif isinstance(target, Unit):
+            self.board.hexes[target.position]['occupied_by'] = 'empty'
+            del self.units[target.pk]

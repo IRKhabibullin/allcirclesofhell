@@ -77,13 +77,8 @@
                     console.log(error);
                 })
             },
-            makeAction(action, destination) {
-                console.log('making action in app')
-                let action_data = {
-                    'action': action,
-                    'game_id': this.game_info.game.pk,
-                    'destination': destination
-                }
+            makeAction(action_data) {
+                action_data['game_id'] = this.game_info.game.pk
                 this.$http.post(localStorage.getItem('endpoint') + '/game/', action_data, {
                     headers: {
                        Authorization: 'Token ' + localStorage.getItem('token')

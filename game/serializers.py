@@ -1,3 +1,5 @@
+from rest_framework.fields import DictField
+
 from game.models import Hero, Item, GameModel, Unit
 from rest_framework import serializers
 from django.contrib.auth.models import User
@@ -43,7 +45,7 @@ class UnitSerializer(serializers.HyperlinkedModelSerializer):
 class GameInstanceSerializer(serializers.Serializer):
     board = serializers.SerializerMethodField('game_board')
     game = GameSerializer(read_only=True)
-    units = UnitSerializer(many=True, read_only=True)
+    units = DictField(child=UnitSerializer())
 
     def game_board(self, game):
         return game.board.get_state()
