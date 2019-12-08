@@ -35,8 +35,6 @@
                     }
                 })
                 .then(response => {
-                    console.log('games');
-                    console.log(response.data);
                     this.games = response.data
                 })
                 .catch(error => {

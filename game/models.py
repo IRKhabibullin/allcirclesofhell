@@ -69,12 +69,15 @@ class Unit(HandbookModel):
     spells = models.ManyToManyField(Spell, blank=True)
     img_path = models.TextField(default='./src/assets/unit.jpeg')
     position = None
+    moves = []
+    attack_hexes = []
 
 
 class Hero(models.Model):
     name = models.CharField(max_length=50)
     health = models.IntegerField(default=50)
     damage = models.IntegerField(default=3)
+    # maybe will add move_range
     attack_range = models.IntegerField(default=1)
     armor = models.IntegerField(default=2)
     weapon = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_weapon', null=True, blank=True)
@@ -83,6 +86,8 @@ class Hero(models.Model):
     spells = models.ManyToManyField(Spell, blank=True)
     # school = models.IntegerField(default=0) it must be enum field
     img_path = models.TextField(default='./src/assets/hero.jpeg')
+    position = None
+    moves = []
 
     def __str__(self):
         return self.name
