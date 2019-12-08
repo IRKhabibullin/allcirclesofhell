@@ -1,4 +1,5 @@
-import PriorityQueue from './structure'
+import PriorityQueue from './structure';
+import {Hero, Unit} from './game_objects';
 
 function get_corners(size) {
     let _corners = [];
@@ -26,8 +27,6 @@ const colors = {
     'crossMoves': '#E1330D',  // unit's and hero's moves intersection
     'target': '#0f7cdb'
 }
-
-var selectedAction = 'move';
 
 class Grid {
     /**
@@ -161,30 +160,14 @@ class Board {
     /**
     * Class to work with game board
     */
-    constructor(component, svg_field, board_data, units, hero) {
+    constructor(component, svg_field, board_data, units, hero_data) {
+        this.component = component;
         var grid_width = Math.round(board_data.radius - 1) * hex_size + 2 * board_data.radius * hex_size + 1;
         var grid_height = (2 * board_data.radius - 1) * Math.sqrt(3) * hex_size + 1;
         this.svg = svg_field.size(grid_width, grid_height);
-
         this.grid = new Grid(board_data.radius, board_data.hexes);
-        this.tiles = this.svg.group();
-        this.units = {};
-        this.component = component;
-        this.hero = {
-            'image': this.svg.image('./src/assets/board_hero_sized.png')
-                .on('mouseover', this.heroMouseoverHandler, this)
-                .on('mouseout', this.heroMouseoutHandler, this),
-            'path': [],
-            'moves': [],
-            'hex': this.grid.get(hero.position),
-            'attack_range': hero.attack_range
-        };
-        hero.moves.forEach(_pos => {
-            this.hero.moves.push(this.grid.get(_pos));
-        });
-        let hero_coords = this.grid.hexToPoint(this.hero.hex);
-        this.hero.image.move(hero_coords.x, hero_coords.y);
 
+        this.tiles = this.svg.group();
         this.grid.hexes.forEach(hex => {
             const {x, y} = this.grid.hexToPoint(hex);
             hex.image = this.getBackgroundImage(hex.occupied_by);
@@ -207,50 +190,17 @@ class Board {
                 .translate(x + 30, y + 35);*/
         });
         this.tiles.on('click', this.tileClickedHandler, this);
-        this.units = units;
 
-        for (var unit_id in this.units) {
-            let unit = this.units[unit_id];
-            let _hex = this.grid.get(unit.position);
-            _hex.occupied_by = unit.pk;
-            unit.hex = _hex;
+        this.hero = new Hero(this, hero_data);
 
-            // create image and move it to unit's position
-            unit.image = this.svg.image(unit.img_path)
-                .attr('id', 'u_' + unit.pk)
-                .on('mouseover', this.unitMouseoverHandler, this)
-                .on('mouseout', this.unitMouseoutHandler, this)
-                .on('click', this.unitClickedHandler, this);
-            let unit_coords = this.grid.hexToPoint(_hex);
-            unit.image.move(unit_coords.x, unit_coords.y);
-
-            // settings moves and attack hexes according to their positions
-            let moves = [];
-            unit.moves.forEach(_pos => {
-                moves.push(this.grid.get(_pos));
-            });
-            unit.moves = moves;
-            let attack_hexes = [];
-            unit.attack_hexes.forEach(_pos => {
-                attack_hexes.push(this.grid.get(_pos));
-            });
-            unit.attack_hexes = attack_hexes;
+        this.units = {};
+        for (var unit_id in units) {
+            this.units[unit_id] = new Unit(this, units[unit_id]);
         }
         this.current_unit = this.units[0];
         this.show_unit_card = false;  // variable for UnitCard element in Vue component
         this.selectedAction = 'move';
         this.altPressed = false;
-    }
-
-    getHexById(hexId) {
-        var coords = hexId.split(';');
-        coords = [parseInt(coords[0]), parseInt(coords[1])];
-        return this.getHexByCoords(coords);
-    }
-
-    getHexByCoords(coords) {
-        var _hex = this.grid[coords[0] * this.grid.height + coords[1]];
-        return _hex;
     }
 
     getBackgroundImage(_type) {
@@ -269,30 +219,22 @@ class Board {
     }
 
     handleAction(actionData) {
-        if (actionData.action == 'move' && actionData.allowed) {
-            this.moveHero(actionData.game.hero);
-            this.resetPath();
-        } else if (actionData.action == 'attack' && actionData.allowed) {
-            this.animate('attack', {
-                'svg_elem': this.hero.image,
-                'source': this.grid.hexToPoint(this.hero.hex),
-                'target': this.grid.hexToPoint(this.units[actionData.target].hex)
+        if (actionData.allowed) {
+            // update hexes on board
+            actionData.board.hexes.forEach(_hex => {
+                let current_hex = this.grid.get([_hex.q, _hex.r]);
+                if (current_hex.occupied_by != _hex.occupied_by) {
+                    let class_to_remove = current_hex.occupied_by == 'empty' ? 'comb' : 'obstacle_comb';
+                    let class_to_add = _hex.occupied_by == 'empty' ? 'comb' : 'obstacle_comb';
+                    if (class_to_add != class_to_remove) {
+                        document.getElementById(current_hex.q + ';' + current_hex.r).classList.remove(class_to_remove);
+                        document.getElementById(current_hex.q + ';' + current_hex.r).classList.add(class_to_add);
+                    }
+                    current_hex.occupied_by = _hex.occupied_by;
+                }
             })
-        }
-        this.update_units(actionData.units, actionData.units_actions);
-        actionData.board.hexes.forEach(_hex => {
-            this.grid.get([_hex.q, _hex.r]).occupied_by = _hex.occupied_by;
-        })
-    }
-
-    animate(animation, data) {
-        if (animation == 'attack') {
-            let svg_elem = data['svg_elem'];
-            let source_point = data['source'];
-            let target_point = data['target'];
-            svg_elem
-                .animate(100, '-', data['delay']).move(target_point.x, target_point.y)
-                .animate(100, '-').move(source_point.x, source_point.y);
+            this.hero.update(actionData.game.hero, {'action': actionData.action, 'target': actionData.target});
+            this.update_units(actionData.units, actionData.units_actions);
         }
     }
 
@@ -302,115 +244,14 @@ class Board {
         let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
 
         units_to_update.forEach(unit_id => {
-            let _unit = new_units[unit_id];
-            this.units[unit_id].health = _unit.health;
-            this.units[unit_id].moves = [];
-            this.moveUnit(this.units[unit_id], _unit.position);
-            _unit.moves.forEach(_pos => {
-                this.units[unit_id].moves.push(this.grid.get(_pos));
-            });
-            this.units[_unit.pk].attack_hexes = [];
-            _unit.attack_hexes.forEach(_pos => {
-                this.units[unit_id].attack_hexes.push(this.grid.get(_pos));
-            });
-        })
+            this.units[unit_id].update(new_units[unit_id], {'action': new_units[unit_id].action});
+        });
         units_to_remove.forEach(unit_id => {
             this.units[unit_id].image.remove();
             delete this.units[unit_id];
-        })
-        units_to_add.forEach(unit_id => {
-            let unit = new_units[unit_id]
-            let _hex = this.grid.get(unit.position);
-            _hex.occupied_by = unit.pk;
-            unit.hex = _hex;
-
-            // create image and move it to unit's position
-            unit.image = this.svg.image(unit.img_path)
-                .attr('id', 'u_' + unit.pk)
-                .on('mouseover', this.unitMouseoverHandler, this)
-                .on('mouseout', this.unitMouseoutHandler, this)
-                .on('click', this.unitClickedHandler, this);
-            let unit_coords = this.grid.hexToPoint(_hex);
-            unit.image.move(unit_coords.x, unit_coords.y);
-
-            // settings moves and attack hexes according to their positions
-            let moves = [];
-            unit.moves.forEach(_pos => {
-                moves.push(this.grid.get(_pos));
-            });
-            unit.moves = moves;
-            let attack_hexes = [];
-            unit.attack_hexes.forEach(_pos => {
-                attack_hexes.push(this.grid.get(_pos));
-            });
-            unit.attack_hexes = attack_hexes;
-            this.units[unit_id] = unit;
-        })
-
-        units_actions.forEach(u_action => {
-            let unit = this.units[u_action.source];
-            this.animate('attack', {
-                'svg_elem': unit.image,
-                'source': this.grid.hexToPoint(unit.hex),
-                'target': this.grid.hexToPoint(this.hero.hex),
-                'delay': 400
-            })
-        })
-    }
-
-    moveUnit(unit, position) {
-        var destination = this.grid.get(position);
-        if (destination.occupied_by != 'empty') {
-            return;
-        }
-        unit.hex.occupied_by = 'empty';
-        document.getElementById(destination.q + ';' + destination.r).classList.remove("comb");
-        document.getElementById(destination.q + ';' + destination.r).classList.add("obstacle_comb");
-        var coords = this.grid.hexToPoint(destination);
-        unit.image.animate(200, '>').delay(200).move(coords.x, coords.y);
-
-        document.getElementById(unit.hex.q + ';' + unit.hex.r).classList.remove("obstacle_comb");
-        document.getElementById(unit.hex.q + ';' + unit.hex.r).classList.add("comb");
-        unit.hex = destination;
-        unit.hex.occupied_by = unit.pk;
-    }
-
-    moveHero(hero) {
-        var destination_hex = this.grid.get(hero.position);
-        if (destination_hex.occupied_by != 'empty') {
-            return;
-        }
-        destination_hex.occupied_by = 'hero';
-        document.getElementById(destination_hex.q + ';' + destination_hex.r).classList.remove("comb");
-        document.getElementById(destination_hex.q + ';' + destination_hex.r).classList.add("obstacle_comb");
-        var coords = this.grid.hexToPoint(destination_hex);
-        this.hero.image.animate(200, '>').move(coords.x, coords.y);
-
-        this.hero.hex.occupied_by = 'empty';
-        document.getElementById(this.hero.hex.q + ';' + this.hero.hex.r).classList.remove("obstacle_comb");
-        document.getElementById(this.hero.hex.q + ';' + this.hero.hex.r).classList.add("comb");
-
-        this.hero.hex = destination_hex;
-        this.hero.moves = [];
-        hero.moves.forEach(_pos => {
-            this.hero.moves.push(this.grid.get(_pos));
         });
-    }
-
-    resetPath() {
-        this.hero.path.forEach(hex => {
-            hex.image = this.getBackgroundImage('empty');
-            document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image);
-        })
-//            probably need to save calculated path and look here for another var like "path_chosen"
-        this.hero.path = [];
-    }
-
-    buildPath(destination) {
-        this.hero.path = this.grid.findPath(this.hero.hex, destination);
-        this.hero.path.forEach(hex => {
-            hex.image = this.getBackgroundImage('path');
-            document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image);
+        units_to_add.forEach(unit_id => {
+            this.units[unit_id] = new Unit(this, new_units[unit_id]);
         })
     }
 
@@ -451,86 +292,36 @@ class Board {
             this.altPressed = false;
             this.hideMoves();
         }
+        if (event.keyCode == 65) {
+            this.actionSelected('attack');
+        }
     }
 
     actionSelected(actionName) {
-        selectedAction = actionName;
+        this.selectedAction = actionName;
     }
 
 // handlers
     tileClickedHandler(event) {
-        var self = this;
         var _hex = this.grid.getById(event.target.id);
 
-        if (selectedAction == 'attack') {
-            selectedAction = 'move'
+        if (this.selectedAction == 'attack') {
+            this.selectedAction = 'move'
         }
-
-        if (this.grid.distance(_hex, this.hero.hex) === 1) {
+        if (this.grid.distance(_hex, this.hero.hex) <= this.hero.move_range) {
+            this.hero.resetPath();
             this.component.makeAction({'action': 'move', 'destination': [_hex.q, _hex.r]});
         } else if (this.hero.path.length > 0) {
             if (_hex != this.hero.path[0]) {
-                self.resetPath();
-                self.buildPath(_hex);
+                this.hero.resetPath();
+                this.hero.buildPath(_hex);
             } else {
                 let hex_in_path = this.hero.path[this.hero.path.length - 1];
                 this.component.makeAction({'action': 'move', 'destination': [hex_in_path.q, hex_in_path.r]});
             }
         } else {
-            self.buildPath(_hex);
+            this.hero.buildPath(_hex);
         }
-    }
-
-    unitMouseoverHandler(event) {
-        this.current_unit = this.units[event.target.id.slice(-1)];
-        this.show_unit_card = true;
-        if (selectedAction == 'attack') {
-            let unit_hex = this.current_unit.hex;
-            if (this.grid.distance(unit_hex, this.hero.hex) <= this.hero.attack_range) {
-                document.getElementById(unit_hex.q + ';' + unit_hex.r).setAttribute('fill', colors.target);
-            }
-        }
-    }
-
-    unitMouseoutHandler(event) {
-        this.current_unit = this.units[event.target.id.slice(-1)];
-        this.show_unit_card = false;
-        if (selectedAction == 'attack') {
-            let unit_hex = this.current_unit.hex;
-            document.getElementById(unit_hex.q + ';' + unit_hex.r).setAttribute('fill', unit_hex.image);
-        }
-    }
-
-    unitClickedHandler(event) {
-        var self = this;
-        var _unit = this.units[event.target.id.slice(-1)];
-        document.getElementById(_unit.hex.q + ';' + _unit.hex.r).setAttribute('fill', _unit.hex.image);
-
-        if (this.grid.distance(_unit.hex, this.hero.hex) === 1) {
-            this.component.makeAction({'action': 'attack', 'target': _unit.pk});
-        } else if (this.hero.path.length > 0) {
-            if (_unit.hex != this.hero.path[0]) {
-                self.resetPath();
-                self.buildPath(_unit.hex);
-            } else {
-                let hex_in_path = this.hero.path[this.hero.path.length - 1];
-                this.component.makeAction({'action': 'move', 'destination': [hex_in_path.q, hex_in_path.r]});
-            }
-        } else {
-            self.buildPath(_unit.hex);
-        }
-    }
-
-    heroMouseoverHandler(event) {
-//        this.hero.moves.forEach(_hex => {
-//            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', colors.heroMoves);
-//        });
-    }
-
-    heroMouseoutHandler(event) {
-//        this.hero.moves.forEach(_hex => {
-//            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', _hex.image);
-//        });
     }
 // handlers
 }

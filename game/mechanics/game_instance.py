@@ -39,7 +39,10 @@ class GameInstance:
         self.game.hero.position = (0, self.board.radius // 2)
         hero_hex = self.board.hexes[self.game.hero.position]
         hero_hex['occupied_by'] = 'hero'
-        self.game.hero.moves = list(self.board.get_hexes_in_range(hero_hex, 1, ['empty']).keys())
+        self.game.hero.moves = list(
+            self.board.get_hexes_in_range(hero_hex, self.game.hero.move_range, ['empty']).keys())
+        self.game.hero.attack_hexes = list(
+            self.board.get_hexes_in_range(hero_hex, self.game.hero.attack_range, ['empty', 'unit']).keys())
         max_unit_level = int(math.pow(2, math.floor(math.log2(self.game.round / 2)))) or 1
         available_hexes = {_id for _id, _hex in self.board.hexes.items() if _hex['occupied_by'] == 'empty'}
         clear_area_range = max(self.board.radius // 2 - self.game.round // 8, 1)
@@ -59,8 +62,8 @@ class GameInstance:
                 unit = Unit.objects.get(level=unit_level)
                 unit.position = available_hexes.pop()
                 unit.pk = len(self.units)
-                self.board.place_game_object(unit)
                 _unit_hex = self.board.hexes[unit.position]
+                _unit_hex['occupied_by'] = 'unit'
                 unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
                 unit.attack_hexes = list(self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty']).keys())
                 self.units[unit.pk] = unit
@@ -129,7 +132,7 @@ class GameInstance:
             if targets:
                 # suppose units can attack only hero for now
                 if actions.attack(self, unit, self.game.hero):
-                    units_actions.append({'source': unit.pk})
+                    units_actions.append({'source': str(unit.pk)})
             else:
                 # try to move somewhere
                 self.unit_move(unit)

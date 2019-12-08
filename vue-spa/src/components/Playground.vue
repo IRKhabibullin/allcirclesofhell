@@ -36,7 +36,7 @@
 
 <script>
     import * as SVG from 'svg.js/dist/svg';
-    import Board from '../mechanics/board'
+    import Board from '../mechanics/board';
 
     export default {
         props: {
