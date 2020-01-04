@@ -10,19 +10,19 @@ class BaseUnit {
         this.move_range = unit_data.move_range;
         let moves = [];
         unit_data.moves.forEach(_pos => {
-            moves.push(board.grid.get(_pos));
+            moves.push(board.grid.hexes[_pos]);
         });
         this.moves = moves;
         let attack_hexes = [];
         unit_data.attack_hexes.forEach(_pos => {
-            attack_hexes.push(board.grid.get(_pos));
+            attack_hexes.push(board.grid.hexes[_pos]);
         });
         this.attack_hexes = attack_hexes;
-        this.hex = board.grid.get(unit_data.position);
+        this.hex = board.grid.hexes[unit_data.position];
         this.img_path = unit_data.img_path;
         this.animation_delay = 0; // animation delay. On turn hero should act first, units after his actions.
         this.image = this.board.svg.image(this.img_path);
-        let unit_coords = this.board.grid.hexToPoint(this.hex);
+        let unit_coords = this.hex.toPoint();
         this.image.move(unit_coords.x, unit_coords.y);
         // skills
         // spells
@@ -40,18 +40,19 @@ class BaseUnit {
         this.move_range = unitData.move_range;
 
         if (unitData.position != [this.hex.q, this.hex.r]) {
-            let new_hex = this.board.grid.get(unitData.position);
+            let new_hex = this.board.grid.hexes[unitData.position];
             this.hex = new_hex;
             this.move(new_hex);
             let moves = [];
             unitData.moves.forEach(_pos => {
-                moves.push(this.board.grid.get(_pos));
+                moves.push(this.board.grid.hexes[_pos]);
             });
             this.moves = moves;
             let attack_hexes = [];
             unitData.attack_hexes.forEach(_pos => {
-                attack_hexes.push(this.board.grid.get(_pos));
+                attack_hexes.push(this.board.grid.hexes[_pos]);
             });
+            this.attack_hexes = attack_hexes;
         }
     }
 
@@ -61,8 +62,8 @@ class BaseUnit {
         * Attack animation.
         *    target: BaseUnit
         */
-        let source_point = this.board.grid.hexToPoint(this.hex);
-        let target_point = this.board.grid.hexToPoint(target.hex);
+        let source_point = this.hex.toPoint();
+        let target_point = target.hex.toPoint();
         this.image
             .animate(100, '-', this.animation_delay).move(target_point.x, target_point.y)
             .animate(100, '-').move(source_point.x, source_point.y);
@@ -73,7 +74,7 @@ class BaseUnit {
         * Move animation.
         *    destination: hex
         */
-        let coords = this.board.grid.hexToPoint(this.hex);
+        let coords = this.hex.toPoint();
         this.image.animate(200, '>', this.animation_delay).move(coords.x, coords.y);
     }
     // end animations
@@ -93,8 +94,7 @@ class Hero extends BaseUnit {
         super.update(unitData, actionData);
         if ('action' in actionData) {
             if (actionData['action'] == 'move') {
-                this.path.pop();
-                console.log('remaining path', this.path);
+                this.resetPath();
             } else if (actionData['action'] == 'attack') {
                 this.attack(this.board.units[actionData.target]);
             }
@@ -103,7 +103,7 @@ class Hero extends BaseUnit {
 
     resetPath() {
         this.path.forEach(hex => {
-            hex.image = this.board.getBackgroundImage('empty');
+            hex.image = hex.getBackground('empty');
             document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image);
         })
 //            probably need to save calculated path and look here for another var like "path_chosen"
@@ -113,7 +113,7 @@ class Hero extends BaseUnit {
     buildPath(destination) {
         this.path = this.board.grid.findPath(this.hex, destination);
         this.path.forEach(hex => {
-            hex.image = this.board.getBackgroundImage('path');
+            hex.image = hex.getBackground('path');
             document.getElementById(hex.q + ';' + hex.r).setAttribute('fill', hex.image);
         })
     }
@@ -140,6 +140,7 @@ class Unit extends BaseUnit {
 
     mouseoverHandler(event) {
         this.board.show_unit_card = true;
+        this.board.current_unit = this;
         if (this.board.selectedAction == 'attack') {
             if (this.board.grid.distance(this.hex, this.board.hero.hex) <= this.board.hero.attack_range) {
                 document.getElementById(this.hex.q + ';' + this.hex.r).setAttribute('fill', this.board.colors.target);
@@ -165,7 +166,7 @@ class Unit extends BaseUnit {
                 this.board.hero.buildPath(this.hex);
             } else {
                 let hex_in_path = this.board.hero.path[this.board.hero.path.length - 1];
-                this.board.component.makeAction({'action': 'move', 'destination': [hex_in_path.q, hex_in_path.r]});
+                this.board.component.makeAction({'action': 'move', 'destination': hex_in_path.q + ';' + hex_in_path.r});
             }
         } else {
             this.board.hero.buildPath(this.hex);
