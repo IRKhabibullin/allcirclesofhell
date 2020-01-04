@@ -3,7 +3,7 @@
         <svg id="drawing" class="text-left m-4 col-6"></svg>
         <!--<b-button variant="info" v-on:click="makeAction()">Select comb</b-button>-->
         <div class="col-2 height=100%">
-            <b-card v-if="!!board" v-show="board.show_unit_card && board.altPressed">
+            <b-card v-if="!!board && board.current_unit" v-show="board.show_unit_card && board.altPressed">
                 <b-card-title>{{ board.current_unit.name }}</b-card-title>
                 <b-list-group>
                     <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
@@ -36,7 +36,7 @@
 
 <script>
     import * as SVG from 'svg.js/dist/svg';
-    import Board from '../mechanics/board'
+    import Board from '../mechanics/board';
 
     export default {
         props: {
@@ -68,14 +68,22 @@
                 this.$emit('game_action', action, action_data);
             },
             handleAction(actionData) {
-                console.log('actionData', actionData);
                 this.board.handleAction(actionData);
             },
             keydownHandler(e) {
-                this.board.keydownHandler(e);
+                if (e.keyCode == 18) {
+                    this.board.altPressed = true;
+                    this.board.showMoves();
+                }
             },
             keyupHandler(e) {
-                this.board.keyupHandler(e);
+                if (e.keyCode == 18) {
+                    this.board.altPressed = false;
+                    this.board.hideMoves();
+                }
+                if (e.keyCode == 65) {
+                    this.board.actionSelected('attack');
+                }
             }
         }
     }

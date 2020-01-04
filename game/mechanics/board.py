@@ -21,20 +21,21 @@ class Board:
             Method generating grid of hexes in board
             """
             for bias in self.position_biases:
-                new_pos = tuple(sum(x) for x in zip((_hex['q'], _hex['r']), bias))
-                if new_pos in self.hexes:
+                new_pos = [sum(x) for x in zip((_hex['q'], _hex['r']), bias)]
+                new_id = f'{new_pos[0]};{new_pos[1]}'
+                if new_id in self.hexes:
                     continue
                 if abs(new_pos[0] + new_pos[1]) >= self.radius:
                     continue
                 if any(pos in [self.radius, -self.radius] for pos in new_pos):
                     continue
                 new_hex = Hex(*new_pos)
-                self.hexes[new_pos] = new_hex
+                self.hexes[new_id] = new_hex
                 create_neighbors(new_hex)
 
         # todo write algorithms for obstacles generating
         start_hex = Hex(0, 0)
-        self.hexes[(0, 0)] = start_hex
+        self.hexes['0;0'] = start_hex
         create_neighbors(start_hex)
 
     def get_neighbors(self, _hex: 'Hex') -> list:
@@ -44,7 +45,7 @@ class Board:
         """
         _neighbors = []
         for bias in self.position_biases:
-            _neighbor = self.hexes.get((_hex['q'] + bias[0], _hex['r'] + bias[1]), None)
+            _neighbor = self.hexes.get(f"{_hex['q'] + bias[0]};{_hex['r'] + bias[1]}", None)
             if _neighbor:
                 _neighbors.append(_neighbor)
         return _neighbors
@@ -59,11 +60,11 @@ class Board:
         for q in range(-_range, _range + 1):
             for r in range(max(-_range, -q - _range),
                            min(_range, -q + _range) + 1):
-                _q, _r = q + center_hex['q'], r + center_hex['r']
-                if (_q, _r) in self.hexes:
-                    _hex = self.hexes[(_q, _r)]
+                _hex_id = f"{q + center_hex['q']};{r + center_hex['r']}"
+                if _hex_id in self.hexes:
+                    _hex = self.hexes[_hex_id]
                     if not occupied_by or _hex['occupied_by'] in occupied_by:
-                        hexes_in_range[(_q, _r)] = _hex
+                        hexes_in_range[_hex_id] = _hex
         return hexes_in_range
 
     def place_game_object(self, game_object):
@@ -78,6 +79,7 @@ class Board:
         """
         Clear board from units, hero, game objects. Re-generate obstacles
         """
+        # todo move obstacles generating into function and call it separately
         for _hex in self.hexes.values():
             _hex['occupied_by'] = 'empty'
             if int(random() * 100) < OBSTACLE_CHANCE:
@@ -94,9 +96,7 @@ class Board:
         """
         Get serialized board state
         """
-        return {'radius': self.radius,
-                'hexes': list(self.hexes.values())
-                }
+        return {'radius': self.radius, 'hexes': self.hexes}
 
 
 def Hex(q: int, r: int, occupied_by: str = 'empty') -> dict:

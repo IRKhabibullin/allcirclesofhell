@@ -43,7 +43,6 @@ class Item(HandbookModel):
 
 
 class Spell(HandbookModel):
-    name = models.CharField(max_length=50)
     cost = models.IntegerField()
     effects = models.ManyToManyField(Effect, blank=True)
     description = models.TextField(default='Not provided')
@@ -51,7 +50,25 @@ class Spell(HandbookModel):
     img_path = models.TextField(default='./src/assets/spell.jpeg')
 
 
-class Unit(HandbookModel):
+class BaseUnit(models.Model):
+    """Base model for units, heroes etc"""
+    health = models.IntegerField(default=50)
+    damage = models.IntegerField(default=3)
+    attack_range = models.IntegerField(default=1)
+    move_range = models.IntegerField(default=1)
+    armor = models.IntegerField(default=2)
+    skills = models.ManyToManyField(Skill, blank=True)
+    spells = models.ManyToManyField(Spell, blank=True)
+    img_path = models.TextField(default='')
+    position = None
+    moves = []
+    attack_hexes = []
+
+    class Meta:
+        abstract = True
+
+
+class Unit(HandbookModel, BaseUnit):
     """
     There could be several identical units in game, but none of them should be saved to db
 
@@ -60,34 +77,15 @@ class Unit(HandbookModel):
     Also maybe I should override save method to do nothing if it is clear that someone trying to save it by mistake
     """
     level = models.IntegerField(default=1)
-    health = models.IntegerField(default=50)
-    damage = models.IntegerField(default=3)
-    attack_range = models.IntegerField(default=1)
-    move_range = models.IntegerField(default=1)
-    armor = models.IntegerField(default=2)
-    skills = models.ManyToManyField(Skill, blank=True)
-    spells = models.ManyToManyField(Spell, blank=True)
     img_path = models.TextField(default='./src/assets/unit.jpeg')
-    position = None
-    moves = []
-    attack_hexes = []
 
 
-class Hero(models.Model):
+class Hero(BaseUnit):
     name = models.CharField(max_length=50)
-    health = models.IntegerField(default=50)
-    damage = models.IntegerField(default=3)
-    # maybe will add move_range
-    attack_range = models.IntegerField(default=1)
-    armor = models.IntegerField(default=2)
     weapon = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_weapon', null=True, blank=True)
     suit = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_suit', null=True, blank=True)
-    skills = models.ManyToManyField(Skill, blank=True)
-    spells = models.ManyToManyField(Spell, blank=True)
-    # school = models.IntegerField(default=0) it must be enum field
     img_path = models.TextField(default='./src/assets/hero.jpeg')
-    position = None
-    moves = []
+    # school = models.IntegerField(default=0) it must be enum field
 
     def __str__(self):
         return self.name
