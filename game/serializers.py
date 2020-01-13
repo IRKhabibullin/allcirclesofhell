@@ -1,6 +1,6 @@
-from rest_framework.fields import DictField
+from rest_framework.fields import DictField, ListField
 
-from game.models import Hero, Item, GameModel, Unit
+from game.models import Hero, Item, GameModel, Unit, Spell
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
@@ -11,9 +11,16 @@ class ItemSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['name', 'cost', 'effects', 'description', 'img_path']
 
 
+class SpellSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Spell
+        fields = ['name', 'cost', 'effects', 'description', 'img_path']
+
+
 class HeroSerializer(serializers.HyperlinkedModelSerializer):
     weapon = ItemSerializer(read_only=True)
     suit = ItemSerializer(read_only=True)
+    spells = SpellSerializer(read_only=True, many=True)
 
     class Meta:
         model = Hero

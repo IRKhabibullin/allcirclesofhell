@@ -17,7 +17,7 @@
                 :hero="game_info.game.hero"
                 v-if="game_state === 'game_loaded'"
                 class="col-10 px-0"
-                @game_action="makeAction"
+                @game_action="requestAction"
                 @close_game="closeGame"
                 ref="playground"
             ></Playground>
@@ -68,16 +68,14 @@
                 })
                 .then(response => {
                     this.game_info = response.data;
-                    console.log('got game');
-                    console.log(this.game_info);
+                    console.log('New game', this.game_info);
                     this.game_state = 'game_loaded';
                 })
                 .catch(error => {
-                    console.log('Failed to get game');
-                    console.log(error);
+                    console.log('Failed to get game', error);
                 })
             },
-            makeAction(action_data) {
+            requestAction(action_data) {
                 action_data['game_id'] = this.game_info.game.pk
                 this.$http.post(localStorage.getItem('endpoint') + '/game/', action_data, {
                     headers: {
@@ -89,8 +87,7 @@
                     this.$refs.playground.handleAction(response.data);
                 })
                 .catch(error => {
-                    console.log('Failed to handle action');
-                    console.log(error);
+                    console.log('Failed to handle action', error);
                 })
             },
             closeGame() {
@@ -104,8 +101,7 @@
                 })
                 .then(response => {})
                 .catch(error => {
-                    console.log('Failed to close game');
-                    console.log(error);
+                    console.log('Failed to close game', error);
                 })
             }
         }

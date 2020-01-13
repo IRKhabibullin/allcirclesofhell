@@ -79,7 +79,10 @@ class GameInstance:
 
     def update_moves(self):
         hero_position = self.board.hexes.get(self.game.hero.position, None)
-        self.game.hero.moves = list(self.board.get_hexes_in_range(hero_position, 1, ['empty']).keys())
+        self.game.hero.moves = list(
+            self.board.get_hexes_in_range(hero_position, self.game.hero.move_range, ['empty']).keys())
+        self.game.hero.attack_hexes = list(
+            self.board.get_hexes_in_range(hero_position, self.game.hero.attack_range, ['empty', 'unit']).keys())
         for unit in self.units.values():
             _unit_hex = self.board.hexes[unit.position]
             unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
@@ -92,35 +95,37 @@ class GameInstance:
         """
         result = {'allowed': False}
         if action_data['action'] == 'move':
-            destination = self.board.hexes.get(action_data['destination'], None)
-            if not destination:
-                return result
-            result['allowed'] = self.hero_move(destination)
-            if not result['allowed']:
-                return result
-        if action_data['action'] == 'attack':
-            result['allowed'] = actions.attack(self, self.game.hero, self.units[action_data['target']])
-            if not result['allowed']:
-                return result
+            result.update(self.hero_move(action_data))
+        elif action_data['action'] == 'attack':
+            result.update(actions.attack(self, self.game.hero, self.units[action_data['target']]))
+        elif action_data['action'] == 'range_attack':
+            result.update(actions.range_attack(self, self.game.hero, self.units[action_data['target']]))
+        elif action_data['action'] == 'path_of_fire':
+            result.update(actions.path_of_fire(self, action_data))
+        if not result['allowed']:
+            return result
         # update hero's and units' possible moves
         result['units_actions'] = self.units_action()
         self.update_moves()
         return result
 
-    def hero_move(self, destination: 'Hex') -> bool:
+    def hero_move(self, action_data: dict) -> dict:
         """
         Make hero move
         """
+        destination = self.board.hexes.get(action_data['destination'], None)
+        if not destination:
+            return {'allowed': False}
         hero_hex = self.board.hexes[self.game.hero.position]
         if self.board.distance(destination, hero_hex) != 1:
-            return False
+            return {'allowed': False}
         if destination['occupied_by'] != 'empty':
-            return False
+            return {'allowed': False}
 
         hero_hex['occupied_by'] = 'empty'
         self.game.hero.position = f"{destination['q']};{destination['r']}"
         destination['occupied_by'] = 'hero'
-        return True
+        return {'allowed': True}
 
     def units_action(self) -> list:
         """
@@ -132,8 +137,9 @@ class GameInstance:
             targets = [_hex for _hex in unit.attack_hexes if self.board.hexes[_hex]['occupied_by'] == 'hero']
             if targets:
                 # suppose units can attack only hero for now
-                if actions.attack(self, unit, self.game.hero):
-                    units_actions.append({'source': str(unit.pk)})
+                attack_result = actions.attack(self, unit, self.game.hero)
+                if attack_result['allowed']:
+                    units_actions.append({'source': str(unit.pk), 'damage_dealt': attack_result['damage']})
             else:
                 # try to move somewhere
                 self.unit_move(unit)
@@ -161,6 +167,7 @@ class GameInstance:
         # call after-damage spells
         if target.health <= 0:
             self.on_death(target)
+        return damage
 
     def on_death(self, target):
         if isinstance(target, Hero):

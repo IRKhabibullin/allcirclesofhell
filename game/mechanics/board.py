@@ -1,4 +1,5 @@
 from random import random
+from game.models import Unit
 
 # chances in percents
 OBSTACLE_CHANCE = 15
@@ -73,6 +74,9 @@ class Board:
         Game object must have <position> and <pk> attributes. Usually its django models
         """
         # maybe need to check for occupied. And add param 'forced_placing'
+        if isinstance(game_object, Unit):
+            self.hexes[game_object.position]['occupied_by'] = 'unit'
+            return
         self.hexes[game_object.position]['occupied_by'] = game_object.pk
 
     def clear_board(self):

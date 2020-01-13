@@ -88,11 +88,22 @@ class GameAction(APIView):
         Handle actions
         """
         response_data = request.data
+        print('request data', response_data)
         game_instance = self.gm.get_game(str(request.data['game_id']))
         action_result = game_instance.hero_action(request.data)
         units_actions = action_result.pop('units_actions')
         response_data.update(action_result)
         response_data.update(GameInstanceSerializer(game_instance).data)
+        action_data = {'action': response_data['action']}
+        if response_data['action'] == 'move':
+            action_data['destination'] = response_data['destination']
+        if response_data['action'] in ['attack', 'range_attack']:
+            action_data.update({'target': response_data.pop('target'), 'damage': response_data.pop('damage')})
+        if response_data['action'] == 'path_of_fire':
+            action_data['targets'] = response_data.pop('targets', {})
+            action_data['target_hexes'] = response_data.pop('target_hexes')
+        response_data['action_data'] = action_data
         for u_action in units_actions:
             response_data['units'][u_action['source']]['action'] = 'attack'
+            response_data['units'][u_action['source']]['damage_dealt'] = u_action['damage_dealt']
         return Response(response_data)

@@ -20,9 +20,9 @@ const neighbors_directions = [
     [1, 0], [1, -1], [0, -1],
     [-1, 0], [-1, 1], [0, 1]
 ]
+// todo need to move colors const to one place
 const colors = {
     'tileBackground': '#f0e256',
-    'path': 'green',
     'heroMoves': '#5D8AAD',
     'unitMoves': '#EE5A3A',
     'crossMoves': '#E1330D',  // unit's and hero's moves intersection
@@ -40,7 +40,34 @@ class Hex {
         this.y = hex_data.y;
         this.z = hex_data.z;
         this.occupied_by = hex_data.occupied_by;
+        this.polygon = null;
         this.image = this.getBackground(this.occupied_by, board);
+        let coords = this.toPoint();
+        this.damage_indicator = board.svg.text('0')
+            .font({'fill': 'red', 'size': 18, 'opacity': 0})
+            .attr('x', coords['x'] + hex_size * 4 / 3).attr('y', coords['y']);
+
+        this.overTargetHandler = null;
+        this.outTargetHandler = null;
+        this.clickHandler = null;
+    }
+
+    mouseoverHandler() {
+        if (!!this.overTargetHandler) {
+            this.overTargetHandler(this);
+        }
+    }
+
+    mouseoutHandler() {
+        if (!!this.outTargetHandler) {
+            this.outTargetHandler(this);
+        }
+    }
+
+    mouseClickHandler() {
+        if (!!this.clickHandler) {
+            this.clickHandler(this);
+        }
     }
 
     getBackground(type, board) {
@@ -50,8 +77,6 @@ class Hex {
         switch (type) {
             case 'obstacle':
                 return board.svg.image('./src/assets/rock.jpg', hex_size * 2, hex_size * 2);
-            case 'path':
-                return colors.path;
             default:
                 return colors.tileBackground;
         }
@@ -70,8 +95,8 @@ class Hex {
         * Not equivalent to hex's x,y values.
         */
         return {
-            'x': hex_size * (3/2 * this.q) + width_offset,
-            'y': hex_size * (Math.sqrt(3)/2 * this.q  +  Math.sqrt(3) * this.r) + height_offset
+            'x': (hex_size + 1) * (3/2 * this.q) + width_offset,
+            'y': (hex_size + 1) * (Math.sqrt(3)/2 * this.q  +  Math.sqrt(3) * this.r) + height_offset
         }
     }
 }
@@ -86,63 +111,46 @@ class HexGrid {
 
         this.board = board;
         this.radius = radius;
-        height_offset = Math.sqrt(3) * (this.radius - 1) * hex_size;
-        width_offset = Math.floor(this.radius / 2) * hex_size +
-            2 * Math.floor((this.radius - 1) / 2) * hex_size + hex_size / 2;
+        height_offset = Math.sqrt(3) * (this.radius - 1) * (hex_size + 1);
+        width_offset = Math.floor(this.radius / 2) * (hex_size + 1) +
+            2 * Math.floor((this.radius - 1) / 2) * (hex_size + 1) + (hex_size + 1) / 2;
         this.hexes = {};
-        var grid_width = Math.round(radius - 1) * hex_size + 2 * radius * hex_size + 1;
-        var grid_height = (2 * radius - 1) * Math.sqrt(3) * hex_size + 1;
+        var grid_width = Math.round(radius - 1) * (hex_size + 1) + 2 * radius * (hex_size + 1) + 1;
+        var grid_height = (2 * radius - 1) * Math.sqrt(3) * (hex_size + 1) + 1;
         this.board.svg.size(grid_width, grid_height);
 
         this.tiles = this.board.svg.group();
-        this.tiles.on('click', this.hexClickHandler, this);
+        this.coordinates = this.board.svg.group();
 
         for (var hex_id in hexes) {
             let hex = new Hex(hexes[hex_id], this.board);
             let {x, y} = hex.toPoint();
-            this.tiles.polygon(corners)
+            let _polygon = this.tiles.polygon(corners)
                 .attr('id', hex_id)
-                .attr('class', hex.occupied_by !== 'empty' ? 'obstacle_comb' : 'comb')
+                .attr('class', hex.occupied_by !== 'empty' ? 'obstacle_hex' : 'hex')
                 .attr('fill', hex.image)
+                .on('mouseover', hex.mouseoverHandler, hex)
+                .on('mouseout', hex.mouseoutHandler, hex)
+                .on('click', hex.mouseClickHandler, hex)
                 .translate(x, y);
+            hex.polygon = _polygon.node;
 
             if (this.show_coordinates) {
-                this.board.svg.text(hex.q + ';' + hex.r)
+                this.coordinates.text(hex.q + ';' + hex.r)
                     .attr('text-anchor', "middle")
                     .attr('fill', "black")
                     .attr('font-size', 9)
                     .translate(x + 30, y);
 
-                this.board.svg.text(hex.x + ';' + hex.y + ';' + hex.z)
+                this.coordinates.text(hex.x + ';' + hex.y + ';' + hex.z)
                     .attr('text-anchor', "middle")
                     .attr('fill', "black")
                     .attr('font-size', 9)
                     .translate(x + 30, y + 35);
             }
+            this.coordinates.attr('opacity', 0);
             this.hexes[hex_id] = hex;
         };
-    }
-
-    hexClickHandler(event) {
-        var _hex = this.hexes[event.target.id];
-
-        if (this.board.selectedAction == 'attack') {
-            this.board.selectedAction = 'move'
-        }
-        if (this.distance(_hex, this.board.hero.hex) <= this.board.hero.move_range) {
-            this.board.hero.resetPath();
-            this.board.component.makeAction({'action': 'move', 'destination': event.target.id});
-        } else if (this.board.hero.path.length > 0) {
-            if (_hex != this.board.hero.path[0]) {
-                this.board.hero.resetPath();
-                this.board.hero.buildPath(_hex);
-            } else {
-                let hex_in_path = this.board.hero.path[this.board.hero.path.length - 1];
-                this.board.component.makeAction({'action': 'move', 'destination': hex_in_path.q + ';' + hex_in_path.r});
-            }
-        } else {
-            this.board.hero.buildPath(_hex);
-        }
     }
 
     getHexByCoords(q, r) {
@@ -167,9 +175,9 @@ class HexGrid {
         return neighbors;
     }
 
-    getHexesInRange(hex, _range, occupied_by = 'any') {
+    getHexesInRange(hex, _range, occupied_by) {
         /**
-        * Get list of hexes in <_range> away from <center_hex>. Center hex itself counts for range 1
+        * Get list of hex ids in <_range> away from <center_hex>. Center hex itself doesn't count in range
         * Can specify allowed hex occupation.
         * Hexes, occupied by object of type that NOT in <occupied_by>, not included in result
         * todo probably need to return object instead of list. It this function is needed at all
@@ -177,10 +185,10 @@ class HexGrid {
         var hexes_in_range = [];
         for (var q = -_range; q < _range + 1; q++) {
             for (var r = Math.max(-_range, -q - _range); r < Math.min(_range, -q + _range) + 1; r++) {
-                let _hex = this.getHexByCoords(q + hex.q, r + hex.r);
-                if (!!_hex) {
-                    if (occupied_by == 'any' || _hex.occupied_by == occupied_by) {
-                        hexes_in_range.push(_hex);
+                let hex_id = (q + hex.q) + ';' + (r + hex.r);
+                if (!!this.hexes[hex_id]) {
+                    if (!occupied_by || occupied_by.includes(this.hexes[hex_id].occupied_by)) {
+                        hexes_in_range.push(hex_id);
                     }
                 }
             }
@@ -216,7 +224,7 @@ class HexGrid {
             neighbors.forEach(next => {
                 if (next.occupied_by != 'empty') {
                     // fixme for now only units have ids in hexes as numbers. But need to fix it later maybe
-                    if (!(typeof next.occupied_by == 'number' && next == target_hex)) {
+                    if (!(next.occupied_by == 'unit' && next == target_hex)) {
                         return;
                     }
                 }

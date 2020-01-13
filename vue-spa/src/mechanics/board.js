@@ -1,9 +1,9 @@
 import {Hero, Unit} from './game_objects';
 import HexGrid from './grid';
+import ActionManager from './actions';
 
 const colors = {
     'tileBackground': '#f0e256',
-    'path': 'green',
     'heroMoves': '#5D8AAD',
     'unitMoves': '#EE5A3A',
     'crossMoves': '#E1330D',  // unit's and hero's moves intersection
@@ -19,16 +19,17 @@ class Board {
         this.svg = svg_field;
         this.grid = new HexGrid(this, board_data.radius, board_data.hexes);
 
-
         this.hero = new Hero(this, hero_data);
-
         this.units = {};
         for (var unit_id in units) {
             this.units[unit_id] = new Unit(this, units[unit_id]);
         }
+
+        this.actionManager = new ActionManager(this);
+        this.actionManager.setAction('move');
+
         this.current_unit = false;
         this.show_unit_card = false;  // variable for UnitCard element in Vue component
-        this.selectedAction = 'move';
         this.altPressed = false;
     }
 
@@ -39,8 +40,8 @@ class Board {
                 let _hex = actionData.board.hexes[_hex_id];
                 let current_hex = this.grid.getHexByCoords(_hex.q, _hex.r);
                 if (current_hex.occupied_by != _hex.occupied_by) {
-                    let class_to_remove = current_hex.occupied_by == 'empty' ? 'comb' : 'obstacle_comb';
-                    let class_to_add = _hex.occupied_by == 'empty' ? 'comb' : 'obstacle_comb';
+                    let class_to_remove = current_hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
+                    let class_to_add = _hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
                     if (class_to_add != class_to_remove) {
                         document.getElementById(current_hex.q + ';' + current_hex.r).classList.remove(class_to_remove);
                         document.getElementById(current_hex.q + ';' + current_hex.r).classList.add(class_to_add);
@@ -48,7 +49,10 @@ class Board {
                     current_hex.occupied_by = _hex.occupied_by;
                 }
             }
-            this.hero.update(actionData.game.hero, {'action': actionData.action, 'target': actionData.target});
+            console.log('actionData', actionData);
+            this.actionManager.handleAction(actionData.action_data);
+            this.actionManager.changeAction('move');
+            this.hero.update(actionData.game.hero, actionData.action_data);
             this.update_units(actionData.units, actionData.units_actions);
         }
     }
@@ -59,7 +63,8 @@ class Board {
         let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
 
         units_to_update.forEach(unit_id => {
-            this.units[unit_id].update(new_units[unit_id], {'action': new_units[unit_id].action});
+            this.units[unit_id].update(new_units[unit_id], {'action': new_units[unit_id].action,
+                                                            'damage': new_units[unit_id].damage_dealt});
         });
         units_to_remove.forEach(unit_id => {
             this.units[unit_id].image.remove();
@@ -76,27 +81,25 @@ class Board {
         });
         for (var unit_id in this.units) {
             let unit = this.units[unit_id];
-            unit.attack_hexes.forEach(hex => {
-                document.getElementById(hex.q + ';' + hex.r)
-                    .setAttribute('fill', this.hero.moves.includes(hex) ? colors.crossMoves : colors.unitMoves);
+            unit.attack_hexes.forEach(hex_id => {
+                document.getElementById(hex_id)
+                    .setAttribute('fill', this.hero.moves.includes(hex_id) ? colors.crossMoves : colors.unitMoves);
             })
         };
+        this.grid.coordinates.attr('opacity', 1);
     }
 
     hideMoves() {
         for (var unit_id in this.units) {
             let unit = this.units[unit_id];
-            unit.attack_hexes.forEach(hex => {
-                hex.setCurrentBackground();
+            unit.attack_hexes.forEach(hex_id => {
+                this.grid.hexes[hex_id].setCurrentBackground();
             })
         };
-        this.hero.moves.forEach(_hex => {
-            _hex.setCurrentBackground();
+        this.hero.moves.forEach(hex_id => {
+            this.grid.hexes[hex_id].setCurrentBackground();
         });
-    }
-
-    actionSelected(actionName) {
-        this.selectedAction = actionName;
+        this.grid.coordinates.attr('opacity', 0);
     }
 }
 
