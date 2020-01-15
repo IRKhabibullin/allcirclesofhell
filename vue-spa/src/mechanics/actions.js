@@ -131,7 +131,7 @@ class ActionManager {
                         hex.polygon.classList.add('spellTarget');
                         hex.overTargetHandler = this.actions['Path of fire'].mouseover;
                         hex.outTargetHandler = this.actions['Path of fire'].mouseout;
-                        hex.clickHandler = this.actions['Path of fire'].clickHandler;
+                        hex.clickHandler = this.actions['Path of fire'].hexClickHandler;
                     });
                     this.actionData.target_units = [];
                     for (var unit_id in this.board.units) {
@@ -140,7 +140,7 @@ class ActionManager {
                             this.actionData.target_units.push(unit);
                             unit.overTargetHandler = this.actions['Path of fire'].mouseover;
                             unit.outTargetHandler = this.actions['Path of fire'].mouseout;
-                            unit.clickTargetHandler = this.actions['Path of fire'].clickHandler;
+                            unit.clickTargetHandler = this.actions['Path of fire'].unitClickHandler;
                         }
                     }
                     this.actionData.path = [];
@@ -184,8 +184,11 @@ class ActionManager {
                     });
                     this.actionData.path = [];
                 },
-                clickHandler: hex => {
+                hexClickHandler: hex => {
                     this.board.component.requestAction({'action': 'path_of_fire', 'target_hex': hex.polygon.id});
+                },
+                unitClickHandler: unit => {
+                    this.board.component.requestAction({'action': 'path_of_fire', 'target_hex': unit.hex.polygon.id});
                 },
                 actionHandler: actionData => {
                     let animation = anime.timeline({
@@ -223,6 +226,118 @@ class ActionManager {
                         this.board.units[unit_id].getDamage(actionData.targets[unit_id].damage);
                     }
                 }
+            },
+            'Shield bash': {
+                set: () => {
+                    this.actionData.target_hexes = this.board.grid.getHexesInRange(this.board.hero.hex, 1);
+                    this.actionData.target_hexes.forEach(hex_id => {
+                        let hex = this.board.grid.hexes[hex_id];
+                        hex.polygon.classList.add('spellTarget');
+                        hex.overTargetHandler = this.actions['Shield bash'].mouseover;
+                        hex.outTargetHandler = this.actions['Shield bash'].mouseout;
+                        hex.clickHandler = this.actions['Shield bash'].hexClickHandler;
+                    });
+                    this.actionData.target_units = [];
+                    for (var unit_id in this.board.units) {
+                        let unit = this.board.units[unit_id];
+                        if (this.actionData.target_hexes.includes(unit.hex.q + ';' + unit.hex.r)) {
+                            this.actionData.target_units.push(unit);
+                            unit.overTargetHandler = this.actions['Shield bash'].mouseover;
+                            unit.outTargetHandler = this.actions['Shield bash'].mouseout;
+                            unit.clickTargetHandler = this.actions['Shield bash'].unitClickHandler;
+                        }
+                    }
+                    this.actionData.hexes_to_bash = [];
+                },
+                drop: () => {
+                    this.actionData.target_hexes.forEach(hex_id => {
+                        let hex = this.board.grid.hexes[hex_id];
+                        hex.polygon.classList.remove('spellTarget');
+                        hex.overTargetHandler = null;
+                        hex.outTargetHandler = null;
+                        hex.clickHandler = null;
+                    });
+                    this.actionData.target_units.forEach(unit => {
+                        unit.overTargetHandler = null;
+                        unit.outTargetHandler = null;
+                        unit.clickTargetHandler = null;
+                    });
+                    this.actionData.hexes_to_bash.forEach(_hex => {
+                        _hex.polygon.classList.remove('shieldBash');
+                    });
+                    this.actionData = {};
+                },
+                mouseover: hex => {
+                    this.actionData.hexes_to_bash = [];
+                    this.board.grid.getHexesInRange(hex, 1).filter(x => this.actionData.target_hexes.includes(x)).forEach(hex_id => {
+                        let _hex = this.board.grid.hexes[hex_id];
+                        if (this.board.hero.hex != _hex) {
+                            this.actionData.hexes_to_bash.push(_hex);
+                        }
+                    });
+                    this.actionData.hexes_to_bash.forEach(_hex => {
+                        _hex.polygon.classList.add('shieldBash');
+                    });
+                },
+                mouseout: hex => {
+                    this.actionData.hexes_to_bash.forEach(_hex => {
+                        _hex.polygon.classList.remove('shieldBash');
+                    });
+                    this.actionData.hexes_to_bash = [];
+                },
+                hexClickHandler: hex => {
+                    this.board.component.requestAction({'action': 'shield_bash', 'target_hex': hex.polygon.id});
+                },
+                unitClickHandler: unit => {
+                    this.board.component.requestAction({'action': 'shield_bash', 'target_hex': unit.hex.polygon.id});
+                },
+                actionHandler: actionData => {
+                    let angles = {
+                        '1;-1': 60,
+                        '1;0': 120,
+                        '0;1': 180,
+                        '-1;1': 240,
+                        '-1;0': 300
+                    }
+                    let target = actionData.target_hex.split(';');
+                    let {x, y} = this.board.hero.hex.toPoint();
+                    target[0] -= this.board.hero.hex.q
+                    target[1] -= this.board.hero.hex.r
+                    let angle_id = target[0] + ';' + target[1];
+                    let angle = angles[angle_id];
+                    for (var unit_id in actionData.targets) {
+                        this.board.units[unit_id].getDamage(actionData.targets[unit_id].damage);
+                    }
+                    let cone = this.animation_elements.image('./src/assets/bash_wave.png', 60, 60)
+                    let animation = anime.timeline({
+                        complete: (anim) => {
+                            this.animation_elements.clear();
+                        }
+                    });
+                    animation.add({
+                        targets: cone.node,
+                        duration: 0,
+                        opacity: 0.1,
+                        translateX: x,
+                        translateY: y,
+                        easing: 'linear',
+                        'transform-origin': '30px 30px',
+                        rotate: angle,
+                        delay: 200
+                    })
+                    .add({
+                        targets: cone.node,
+                        opacity: 0.6,
+                        scale: 2.5,
+                        easing: 'easeOutExpo',
+                        duration: 300
+                    })
+                    .add({
+                        targets: cone.node,
+                        opacity: 0,
+                        duration: 50
+                    });
+                }
             }
         }
     }
@@ -238,15 +353,20 @@ class ActionManager {
 
     changeAction(actionName) {
         if (this.currentAction != actionName) {
-            console.log('Action changed:', this.currentAction, '->', actionName);
             this.dropCurrentAction();
+            console.log('Action changed:', this.currentAction, '->', actionName);
             this.setAction(actionName);
         }
     }
 
     handleAction(actionData) {
-        if (actionData.action == 'path_of_fire') {
-            actionData.action = 'Path of fire';
+        let action_names = {
+            'path_of_fire': 'Path of fire',
+            'shield_bash': 'Shield bash',
+            'blink': 'Blink'
+        }
+        if (actionData.action in action_names) {
+            actionData.action = action_names[actionData.action];
         }
         if ('actionHandler' in this.actions[actionData.action]) {
             this.actions[actionData.action].actionHandler(actionData);

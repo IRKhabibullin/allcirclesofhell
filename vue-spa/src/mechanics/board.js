@@ -76,8 +76,8 @@ class Board {
     }
 
     showMoves() {
-        this.hero.moves.forEach(_hex => {
-            document.getElementById(_hex.q + ';' + _hex.r).setAttribute('fill', colors.heroMoves);
+        this.hero.moves.forEach(hex_id => {
+            document.getElementById(hex_id).setAttribute('fill', colors.heroMoves);
         });
         for (var unit_id in this.units) {
             let unit = this.units[unit_id];
@@ -86,7 +86,7 @@ class Board {
                     .setAttribute('fill', this.hero.moves.includes(hex_id) ? colors.crossMoves : colors.unitMoves);
             })
         };
-        this.grid.coordinates.attr('opacity', 1);
+        this.grid.coordinates.attr('display', '');
     }
 
     hideMoves() {
@@ -99,7 +99,7 @@ class Board {
         this.hero.moves.forEach(hex_id => {
             this.grid.hexes[hex_id].setCurrentBackground();
         });
-        this.grid.coordinates.attr('opacity', 0);
+        this.grid.coordinates.attr('display', 'none');
     }
 }
 

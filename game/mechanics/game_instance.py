@@ -94,6 +94,7 @@ class GameInstance:
         Make hero action
         """
         result = {'allowed': False}
+        stunned_units = []
         if action_data['action'] == 'move':
             result.update(self.hero_move(action_data))
         elif action_data['action'] == 'attack':
@@ -102,10 +103,13 @@ class GameInstance:
             result.update(actions.range_attack(self, self.game.hero, self.units[action_data['target']]))
         elif action_data['action'] == 'path_of_fire':
             result.update(actions.path_of_fire(self, action_data))
+        elif action_data['action'] == 'shield_bash':
+            result.update(actions.shield_bash(self, action_data))
+            stunned_units.extend(result['targets'].keys())
         if not result['allowed']:
             return result
         # update hero's and units' possible moves
-        result['units_actions'] = self.units_action()
+        result['units_actions'] = self.units_action(stunned_units)
         self.update_moves()
         return result
 
@@ -127,12 +131,15 @@ class GameInstance:
         destination['occupied_by'] = 'hero'
         return {'allowed': True}
 
-    def units_action(self) -> list:
+    def units_action(self, except_list: list) -> list:
         """
         Units' actions. Follows after hero's action
+        except_list: list of unit ids. These units doesnt act this time
         """
         units_actions = []
         for unit in self.units.values():
+            if unit.pk in except_list:
+                continue
             # try to find target to attack
             targets = [_hex for _hex in unit.attack_hexes if self.board.hexes[_hex]['occupied_by'] == 'hero']
             if targets:

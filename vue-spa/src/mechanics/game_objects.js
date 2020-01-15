@@ -136,13 +136,21 @@ class Hero extends BaseUnit {
 
     showAttackHexes(_show) {
         this.attack_hexes.forEach(hex_id => {
-            document.getElementById(hex_id).setAttribute('fill', _show ? 'blue' : this.board.grid.hexes[hex_id].image);
+            let element = this.board.grid.hexes[hex_id].polygon;
+            if (_show)
+                element.classList.add('availableAttackTarget');
+            else
+                element.classList.remove('availableAttackTarget');
         })
     }
 
    showRangeAttackHexes(_show) {
         this.range_attack_hexes.forEach(hex_id => {
-            document.getElementById(hex_id).setAttribute('fill', _show ? 'blue' : this.board.grid.hexes[hex_id].image);
+            let element = this.board.grid.hexes[hex_id].polygon;
+            if (_show)
+                element.classList.add('availableAttackTarget');
+            else
+                element.classList.remove('availableAttackTarget');
         })
     }
 };
@@ -207,7 +215,7 @@ class Unit extends BaseUnit {
 
     clickHandler(event) {
         if (!!this.clickTargetHandler) {
-            this.clickTargetHandler(this.hex);
+            this.clickTargetHandler(this);
         }
 //        if (['attack', 'range_attack'].includes(this.board.selectedAction)) {
 //            let action_range = 0

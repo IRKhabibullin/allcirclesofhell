@@ -148,7 +148,7 @@ class HexGrid {
                     .attr('font-size', 9)
                     .translate(x + 30, y + 35);
             }
-            this.coordinates.attr('opacity', 0);
+            this.coordinates.attr('display', 'none');
             this.hexes[hex_id] = hex;
         };
     }

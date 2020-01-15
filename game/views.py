@@ -102,6 +102,9 @@ class GameAction(APIView):
         if response_data['action'] == 'path_of_fire':
             action_data['targets'] = response_data.pop('targets', {})
             action_data['target_hexes'] = response_data.pop('target_hexes')
+        if response_data['action'] == 'shield_bash':
+            action_data['targets'] = response_data.pop('targets', {})
+            action_data['target_hex'] = response_data.pop('target_hex')
         response_data['action_data'] = action_data
         for u_action in units_actions:
             response_data['units'][u_action['source']]['action'] = 'attack'

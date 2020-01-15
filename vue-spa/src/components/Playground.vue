@@ -48,6 +48,7 @@
                 <b-list-group class="align-items-center" v-for="spell in hero.spells">
                     <b-button
                         variant="info"
+                        v-bind:title="spell.description"
                         v-on:click="board.actionManager.changeAction(spell.name)"
                         class="btn btn-warning btn-circle p-0 btn-xl m-1"
                     >
@@ -156,6 +157,10 @@
         stroke: red;
         stroke-width: 2;
         fill: orange;
+    }
+    .hex.shieldBash, .obstacle_hex.shieldBash {
+        stroke: red;
+        stroke-width: 3;
     }
     .btn-circle.btn-xl {
         width: 60px;
