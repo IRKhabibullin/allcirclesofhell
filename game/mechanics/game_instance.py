@@ -103,6 +103,8 @@ class GameInstance:
             result.update(actions.range_attack(self, self.game.hero, self.units[action_data['target']]))
         elif action_data['action'] == 'path_of_fire':
             result.update(actions.path_of_fire(self, action_data))
+        elif action_data['action'] == 'blink':
+            result.update(actions.blink(self, action_data))
         elif action_data['action'] == 'shield_bash':
             result.update(actions.shield_bash(self, action_data))
             stunned_units.extend(result['targets'].keys())

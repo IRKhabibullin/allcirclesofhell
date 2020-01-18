@@ -83,3 +83,17 @@ def shield_bash(game_instance, action_data):
     result['targets'] = targets
     print('target units', targets)
     return result
+
+
+def blink(game_instance, action_data):
+    """Blink spell"""
+    result = {'allowed': False}
+    target_hex = game_instance.board.hexes.get(action_data['target_hex'])
+    hero_hex = game_instance.board.hexes[game_instance.game.hero.position]
+    if not target_hex or game_instance.board.distance(hero_hex, target_hex) > 3 or target_hex['occupied_by'] != 'empty':
+        return result
+    result['allowed'] = True
+    hero_hex['occupied_by'] = 'empty'
+    game_instance.game.hero.position = f"{target_hex['q']};{target_hex['r']}"
+    target_hex['occupied_by'] = 'hero'
+    return result

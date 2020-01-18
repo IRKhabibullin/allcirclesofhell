@@ -338,6 +338,43 @@ class ActionManager {
                         duration: 50
                     });
                 }
+            },
+            'Blink': {
+                set: () => {
+                    this.actionData.target_hexes = this.board.grid.getHexesInRange(this.board.hero.hex, 3, ['empty']);
+                    this.actionData.target_hexes.forEach(hex_id => {
+                        let hex = this.board.grid.hexes[hex_id];
+                        hex.polygon.classList.add('spellTarget');
+                        hex.overTargetHandler = this.actions['Blink'].mouseover;
+                        hex.outTargetHandler = this.actions['Blink'].mouseout;
+                        hex.clickHandler = this.actions['Blink'].hexClickHandler;
+                    });
+                },
+                drop: () => {
+                    this.actionData.target_hexes.forEach(hex_id => {
+                        let hex = this.board.grid.hexes[hex_id];
+                        hex.polygon.classList.remove('spellTarget');
+                        hex.overTargetHandler = null;
+                        hex.outTargetHandler = null;
+                        hex.clickHandler = null;
+                    });
+                    if ('destination' in this.actionData) {
+                        this.actionData.destination.polygon.classList.remove('shieldBash');
+                    }
+                    this.actionData = {};
+                },
+                mouseover: hex => {
+                    hex.polygon.classList.add('shieldBash');
+                },
+                mouseout: hex => {
+                    hex.polygon.classList.remove('shieldBash');
+                },
+                hexClickHandler: hex => {
+                    this.actionData.destination = hex;
+                    this.board.component.requestAction({'action': 'blink', 'target_hex': hex.polygon.id});
+                },
+                actionHandler: actionData => {
+                }
             }
         }
     }
