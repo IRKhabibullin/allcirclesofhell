@@ -249,6 +249,22 @@ class HexGrid {
         }
         return path;
     }
+
+    update_hexes(hexes) {
+        for (var hex_id in hexes) {
+            let _hex = hexes[hex_id];
+            let current_hex = this.hexes[hex_id];
+            if (current_hex.occupied_by != _hex.occupied_by) {
+                let class_to_remove = current_hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
+                let class_to_add = _hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
+                if (class_to_add != class_to_remove) {
+                    current_hex.polygon.classList.remove(class_to_remove);
+                    current_hex.polygon.classList.add(class_to_add);
+                }
+                current_hex.occupied_by = _hex.occupied_by;
+            }
+        }
+    }
 }
 
 export default HexGrid

@@ -93,45 +93,18 @@ class GameInstance:
         """
         Make hero action
         """
-        result = {'allowed': False}
-        stunned_units = []
-        if action_data['action'] == 'move':
-            result.update(self.hero_move(action_data))
-        elif action_data['action'] == 'attack':
-            result.update(actions.attack(self, self.game.hero, self.units[action_data['target']]))
-        elif action_data['action'] == 'range_attack':
-            result.update(actions.range_attack(self, self.game.hero, self.units[action_data['target']]))
-        elif action_data['action'] == 'path_of_fire':
-            result.update(actions.path_of_fire(self, action_data))
-        elif action_data['action'] == 'blink':
-            result.update(actions.blink(self, action_data))
-        elif action_data['action'] == 'shield_bash':
-            result.update(actions.shield_bash(self, action_data))
-            stunned_units.extend(result['targets'].keys())
-        if not result['allowed']:
-            return result
+        action_data['allowed'] = False
+        if action_data['action'] in ['attack', 'range_attack']:
+            action_data.update(getattr(actions, action_data['action'])(self, self.game.hero,
+                                                                       self.units[action_data['target']]))
+        else:
+            action_data.update(getattr(actions, action_data['action'])(self, action_data))
+        if not action_data['allowed']:
+            return action_data
         # update hero's and units' possible moves
-        result['units_actions'] = self.units_action(stunned_units)
+        action_data['units_actions'] = self.units_action(except_list=action_data.pop('stunned_units', []))
         self.update_moves()
-        return result
-
-    def hero_move(self, action_data: dict) -> dict:
-        """
-        Make hero move
-        """
-        destination = self.board.hexes.get(action_data['destination'], None)
-        if not destination:
-            return {'allowed': False}
-        hero_hex = self.board.hexes[self.game.hero.position]
-        if self.board.distance(destination, hero_hex) != 1:
-            return {'allowed': False}
-        if destination['occupied_by'] != 'empty':
-            return {'allowed': False}
-
-        hero_hex['occupied_by'] = 'empty'
-        self.game.hero.position = f"{destination['q']};{destination['r']}"
-        destination['occupied_by'] = 'hero'
-        return {'allowed': True}
+        return action_data
 
     def units_action(self, except_list: list) -> list:
         """

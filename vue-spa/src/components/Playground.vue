@@ -49,7 +49,7 @@
                     <b-button
                         variant="info"
                         v-bind:title="'Spell: ' + spell.name + '\n' + spell.description"
-                        v-on:click="board.actionManager.changeAction(spell.name)"
+                        v-on:click="board.actionManager.changeAction(spell.code_name)"
                         class="btn btn-warning btn-circle p-0 btn-xl m-1"
                     >
                         <b-img :src="spell.img_path" width=40 height=40 :alt="spell.name"></b-img>
@@ -141,6 +141,10 @@
         stroke-width: 2;
         stroke: #DA4567;
     }
+    .secondaryTarget, .spellTarget.secondaryTarget {
+        stroke: red;
+        stroke-width: 3;
+    }
     .attackTarget {
         stroke-width: 2;
         stroke: red;
@@ -157,10 +161,6 @@
         stroke: red;
         stroke-width: 2;
         fill: orange;
-    }
-    .hex.shieldBash, .obstacle_hex.shieldBash {
-        stroke: red;
-        stroke-width: 3;
     }
     .btn-circle.btn-xl {
         width: 60px;

@@ -14,7 +14,12 @@ class ItemSerializer(serializers.HyperlinkedModelSerializer):
 class SpellSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Spell
-        fields = ['name', 'cost', 'effects', 'description', 'img_path']
+        fields = ['code_name', 'name', 'cost', 'effects', 'description', 'img_path']
+
+    effects = serializers.SerializerMethodField('spell_effects')
+
+    def spell_effects(self, spell):
+        return {item.effect.code_name: item.value for item in spell.spelleffect_set.all()}
 
 
 class HeroSerializer(serializers.HyperlinkedModelSerializer):

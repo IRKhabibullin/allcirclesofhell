@@ -34,22 +34,9 @@ class Board {
     }
 
     handleAction(actionData) {
-        if (actionData.allowed) {
-            // update hexes on board
-            for (var _hex_id in actionData.board.hexes) {
-                let _hex = actionData.board.hexes[_hex_id];
-                let current_hex = this.grid.getHexByCoords(_hex.q, _hex.r);
-                if (current_hex.occupied_by != _hex.occupied_by) {
-                    let class_to_remove = current_hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
-                    let class_to_add = _hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
-                    if (class_to_add != class_to_remove) {
-                        document.getElementById(current_hex.q + ';' + current_hex.r).classList.remove(class_to_remove);
-                        document.getElementById(current_hex.q + ';' + current_hex.r).classList.add(class_to_add);
-                    }
-                    current_hex.occupied_by = _hex.occupied_by;
-                }
-            }
-            console.log('actionData', actionData);
+        console.log('actionData', actionData);
+        if (actionData.action_data.allowed) {
+            this.grid.update_hexes(actionData.board.hexes);
             this.actionManager.handleAction(actionData.action_data);
             this.actionManager.changeAction('move');
             this.hero.update(actionData.game.hero, actionData.action_data);

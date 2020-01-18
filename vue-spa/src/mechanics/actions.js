@@ -26,7 +26,6 @@ class ActionManager {
                 drop: () => {
                     this.board.hero.updateHandler = null;
                     this.actions.move.resetPath();
-                    this.actionData = {};
                 },
                 buildPath: destination => {
                     this.actionData.path = this.board.grid.findPath(this.board.hero.hex, destination);
@@ -85,11 +84,11 @@ class ActionManager {
                     this.actions.attack.setByAttackHexes(this.board.hero.attack_hexes);
                 },
                 setByAttackHexes: attackHexes => {
-                    this.actionData.targets = [];
+                    this.actionData.target_units = [];
                     for (var unit_id in this.board.units) {
                         let unit = this.board.units[unit_id];
                         if (attackHexes.includes(unit.hex.q + ';' + unit.hex.r)) {
-                            this.actionData.targets.push(unit);
+                            this.actionData.target_units.push(unit);
                             unit.hex.polygon.classList.add('availableAttackTarget');
                             unit.overTargetHandler = this.actions.attack.unitMouseoverHandler;
                             unit.outTargetHandler = this.actions.attack.unitMouseoutHandler;
@@ -97,13 +96,10 @@ class ActionManager {
                     }
                 },
                 drop: () => {
-                    this.actionData.targets.forEach(unit => {
+                    this.actionData.target_units.forEach(unit => {
                         unit.hex.polygon.classList.remove('availableAttackTarget');
                         unit.hex.polygon.classList.remove('attackTarget');
-                        unit.overTargetHandler = null;
-                        unit.outTargetHandler = null;
                     })
-                    this.actionData = {};
                 },
                 unitMouseoverHandler: hex => {
                     hex.polygon.classList.remove('availableAttackTarget');
@@ -123,72 +119,41 @@ class ActionManager {
                 }
             },
 //            spells
-            'Path of fire': {
+            'path_of_fire': {
                 set: () => {
-                    this.actionData.target_hexes = this.board.grid.getHexesInRange(this.board.hero.hex, 1, ['empty', 'unit']);
-                    this.actionData.target_hexes.forEach(hex_id => {
-                        let hex = this.board.grid.hexes[hex_id];
-                        hex.polygon.classList.add('spellTarget');
-                        hex.overTargetHandler = this.actions['Path of fire'].mouseover;
-                        hex.outTargetHandler = this.actions['Path of fire'].mouseout;
-                        hex.clickHandler = this.actions['Path of fire'].hexClickHandler;
-                    });
-                    this.actionData.target_units = [];
-                    for (var unit_id in this.board.units) {
-                        let unit = this.board.units[unit_id];
-                        if (this.actionData.target_hexes.includes(unit.hex.q + ';' + unit.hex.r)) {
-                            this.actionData.target_units.push(unit);
-                            unit.overTargetHandler = this.actions['Path of fire'].mouseover;
-                            unit.outTargetHandler = this.actions['Path of fire'].mouseout;
-                            unit.clickTargetHandler = this.actions['Path of fire'].unitClickHandler;
-                        }
-                    }
+                    this.setTargets(this.board.grid.getHexesInRange(this.board.hero.hex,
+                                                                    this.board.hero.spells[this.currentAction].radius,
+                                                                    ['empty', 'unit']));
                     this.actionData.path = [];
                 },
                 drop: () => {
-                    this.actionData.target_hexes.forEach(hex_id => {
-                        let hex = this.board.grid.hexes[hex_id];
-                        hex.polygon.classList.remove('spellTarget');
-                        hex.overTargetHandler = null;
-                        hex.outTargetHandler = null;
-                        hex.clickHandler = null;
-                    });
-                    this.actionData.target_units.forEach(unit => {
-                        unit.overTargetHandler = null;
-                        unit.outTargetHandler = null;
-                        unit.clickTargetHandler = null;
-                    });
                     this.actionData.path.forEach(_hex => {
-                        _hex.polygon.classList.remove('pathOfFire');
+                        _hex.polygon.classList.remove('secondaryTarget');
                     });
-                    this.actionData = {};
                 },
                 mouseover: hex => {
                     let dq = hex.q - this.board.hero.hex.q;
                     let dr = hex.r - this.board.hero.hex.r;
-                    for (var i = 1; i < 5; i++) {
+                    for (var i = 1; i < this.board.hero.spells[this.currentAction].path_length + 1; i++) {
                         let current_hex = this.board.grid.getHexByCoords(this.board.hero.hex.q + dq * i,
                                                                          this.board.hero.hex.r + dr * i);
-                        if (current_hex === undefined || current_hex.occupied_by == 'obstacle') {
+                        if (current_hex === undefined || current_hex.occupied_by == 'obstacle')
                             break;
-                        }
                         this.actionData.path.push(current_hex);
+                        current_hex.polygon.classList.add('secondaryTarget');
                     }
-                    this.actionData.path.forEach(_hex => {
-                        _hex.polygon.classList.add('pathOfFire');
-                    });
                 },
                 mouseout: hex => {
                     this.actionData.path.forEach(_hex => {
-                        _hex.polygon.classList.remove('pathOfFire');
+                        _hex.polygon.classList.remove('secondaryTarget');
                     });
                     this.actionData.path = [];
                 },
                 hexClickHandler: hex => {
-                    this.board.component.requestAction({'action': 'path_of_fire', 'target_hex': hex.polygon.id});
+                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
                 },
                 unitClickHandler: unit => {
-                    this.board.component.requestAction({'action': 'path_of_fire', 'target_hex': unit.hex.polygon.id});
+                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
                 },
                 actionHandler: actionData => {
                     let animation = anime.timeline({
@@ -210,16 +175,16 @@ class ActionManager {
                             scale: 0.1
                         }).add({
                             targets: explosion.node,
+                            duration: 200,
                             opacity: 1,
                             scale: 1,
                             translateX: x,
                             translateY: y,
-                            easing: 'easeOutQuart',
-                            duration: 200
-                        }, 75*i).add({
+                            easing: 'easeOutQuart'
+                        }, 100*i).add({
                             targets: explosion.node,
-                            opacity: 0,
-                            duration: 100
+                            duration: 100,
+                            opacity: 0
                         });
                     }
                     for (var unit_id in actionData.targets) {
@@ -227,45 +192,15 @@ class ActionManager {
                     }
                 }
             },
-            'Shield bash': {
+            'shield_bash': {
                 set: () => {
-                    this.actionData.target_hexes = this.board.grid.getHexesInRange(this.board.hero.hex, 1);
-                    this.actionData.target_hexes.forEach(hex_id => {
-                        let hex = this.board.grid.hexes[hex_id];
-                        hex.polygon.classList.add('spellTarget');
-                        hex.overTargetHandler = this.actions['Shield bash'].mouseover;
-                        hex.outTargetHandler = this.actions['Shield bash'].mouseout;
-                        hex.clickHandler = this.actions['Shield bash'].hexClickHandler;
-                    });
-                    this.actionData.target_units = [];
-                    for (var unit_id in this.board.units) {
-                        let unit = this.board.units[unit_id];
-                        if (this.actionData.target_hexes.includes(unit.hex.q + ';' + unit.hex.r)) {
-                            this.actionData.target_units.push(unit);
-                            unit.overTargetHandler = this.actions['Shield bash'].mouseover;
-                            unit.outTargetHandler = this.actions['Shield bash'].mouseout;
-                            unit.clickTargetHandler = this.actions['Shield bash'].unitClickHandler;
-                        }
-                    }
+                    this.setTargets(this.board.grid.getHexesInRange(this.board.hero.hex, 1, ['empty', 'unit', 'obstacle']));
                     this.actionData.hexes_to_bash = [];
                 },
                 drop: () => {
-                    this.actionData.target_hexes.forEach(hex_id => {
-                        let hex = this.board.grid.hexes[hex_id];
-                        hex.polygon.classList.remove('spellTarget');
-                        hex.overTargetHandler = null;
-                        hex.outTargetHandler = null;
-                        hex.clickHandler = null;
-                    });
-                    this.actionData.target_units.forEach(unit => {
-                        unit.overTargetHandler = null;
-                        unit.outTargetHandler = null;
-                        unit.clickTargetHandler = null;
-                    });
                     this.actionData.hexes_to_bash.forEach(_hex => {
-                        _hex.polygon.classList.remove('shieldBash');
+                        _hex.polygon.classList.remove('secondaryTarget');
                     });
-                    this.actionData = {};
                 },
                 mouseover: hex => {
                     this.actionData.hexes_to_bash = [];
@@ -273,26 +208,24 @@ class ActionManager {
                         let _hex = this.board.grid.hexes[hex_id];
                         if (this.board.hero.hex != _hex) {
                             this.actionData.hexes_to_bash.push(_hex);
+                            _hex.polygon.classList.add('secondaryTarget');
                         }
-                    });
-                    this.actionData.hexes_to_bash.forEach(_hex => {
-                        _hex.polygon.classList.add('shieldBash');
                     });
                 },
                 mouseout: hex => {
                     this.actionData.hexes_to_bash.forEach(_hex => {
-                        _hex.polygon.classList.remove('shieldBash');
+                        _hex.polygon.classList.remove('secondaryTarget');
                     });
                     this.actionData.hexes_to_bash = [];
                 },
                 hexClickHandler: hex => {
-                    this.board.component.requestAction({'action': 'shield_bash', 'target_hex': hex.polygon.id});
+                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
                 },
                 unitClickHandler: unit => {
-                    this.board.component.requestAction({'action': 'shield_bash', 'target_hex': unit.hex.polygon.id});
+                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
                 },
                 actionHandler: actionData => {
-                    let angles = {
+                    const angles = {
                         '1;-1': 60,
                         '1;0': 120,
                         '0;1': 180,
@@ -301,10 +234,9 @@ class ActionManager {
                     }
                     let target = actionData.target_hex.split(';');
                     let {x, y} = this.board.hero.hex.toPoint();
-                    target[0] -= this.board.hero.hex.q
-                    target[1] -= this.board.hero.hex.r
-                    let angle_id = target[0] + ';' + target[1];
-                    let angle = angles[angle_id];
+                    target[0] -= this.board.hero.hex.q;
+                    target[1] -= this.board.hero.hex.r;
+                    let angle = angles[target[0] + ';' + target[1]];
                     for (var unit_id in actionData.targets) {
                         this.board.units[unit_id].getDamage(actionData.targets[unit_id].damage);
                     }
@@ -317,61 +249,44 @@ class ActionManager {
                     animation.add({
                         targets: cone.node,
                         duration: 0,
+                        delay: 200,
                         opacity: 0.1,
                         translateX: x,
                         translateY: y,
                         easing: 'linear',
                         'transform-origin': '30px 30px',
-                        rotate: angle,
-                        delay: 200
+                        rotate: angle
                     })
                     .add({
                         targets: cone.node,
+                        duration: 300,
                         opacity: 0.6,
                         scale: 2.5,
-                        easing: 'easeOutExpo',
-                        duration: 300
+                        easing: 'easeOutExpo'
                     })
                     .add({
                         targets: cone.node,
-                        opacity: 0,
-                        duration: 50
+                        duration: 50,
+                        opacity: 0
                     });
                 }
             },
-            'Blink': {
+            'blink': {
                 set: () => {
-                    this.actionData.target_hexes = this.board.grid.getHexesInRange(this.board.hero.hex, 3, ['empty']);
-                    this.actionData.target_hexes.forEach(hex_id => {
-                        let hex = this.board.grid.hexes[hex_id];
-                        hex.polygon.classList.add('spellTarget');
-                        hex.overTargetHandler = this.actions['Blink'].mouseover;
-                        hex.outTargetHandler = this.actions['Blink'].mouseout;
-                        hex.clickHandler = this.actions['Blink'].hexClickHandler;
-                    });
+                    this.setTargets(this.board.grid.getHexesInRange(this.board.hero.hex, 3, ['empty']), false);
                 },
                 drop: () => {
-                    this.actionData.target_hexes.forEach(hex_id => {
-                        let hex = this.board.grid.hexes[hex_id];
-                        hex.polygon.classList.remove('spellTarget');
-                        hex.overTargetHandler = null;
-                        hex.outTargetHandler = null;
-                        hex.clickHandler = null;
-                    });
-                    if ('destination' in this.actionData) {
-                        this.actionData.destination.polygon.classList.remove('shieldBash');
-                    }
-                    this.actionData = {};
                 },
                 mouseover: hex => {
-                    hex.polygon.classList.add('shieldBash');
+                    hex.polygon.classList.add('secondaryTarget');
                 },
                 mouseout: hex => {
-                    hex.polygon.classList.remove('shieldBash');
+                    hex.polygon.classList.remove('secondaryTarget');
                 },
                 hexClickHandler: hex => {
                     this.actionData.destination = hex;
-                    this.board.component.requestAction({'action': 'blink', 'target_hex': hex.polygon.id});
+                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
+                    hex.polygon.classList.remove('secondaryTarget');
                 },
                 actionHandler: actionData => {
                 }
@@ -381,6 +296,8 @@ class ActionManager {
 
     dropCurrentAction() {
         this.actions[this.currentAction].drop();
+        this.commonDrop();
+        this.actionData = {};
     }
 
     setAction(actionName) {
@@ -397,16 +314,50 @@ class ActionManager {
     }
 
     handleAction(actionData) {
-        let action_names = {
-            'path_of_fire': 'Path of fire',
-            'shield_bash': 'Shield bash',
-            'blink': 'Blink'
-        }
-        if (actionData.action in action_names) {
-            actionData.action = action_names[actionData.action];
-        }
         if ('actionHandler' in this.actions[actionData.action]) {
             this.actions[actionData.action].actionHandler(actionData);
+        }
+    }
+
+    commonDrop() {
+        if ('target_hexes' in this.actionData) {
+            this.actionData.target_hexes.forEach(hex_id => {
+                let hex = this.board.grid.hexes[hex_id];
+                hex.polygon.classList.remove('spellTarget');
+                hex.overTargetHandler = null;
+                hex.outTargetHandler = null;
+                hex.clickHandler = null;
+            });
+        }
+        if ('target_units' in this.actionData) {
+            this.actionData.target_units.forEach(unit => {
+                unit.overTargetHandler = null;
+                unit.outTargetHandler = null;
+                unit.clickTargetHandler = null;
+            });
+        }
+    }
+
+    setTargets(hexes, includeUnits=true) {
+        this.actionData.target_hexes = hexes;
+        this.actionData.target_hexes.forEach(hex_id => {
+            let hex = this.board.grid.hexes[hex_id];
+            hex.polygon.classList.add('spellTarget');
+            hex.overTargetHandler = this.actions[this.currentAction].mouseover;
+            hex.outTargetHandler = this.actions[this.currentAction].mouseout;
+            hex.clickHandler = this.actions[this.currentAction].hexClickHandler;
+        });
+        if (includeUnits) {
+            this.actionData.target_units = [];
+            for (var unit_id in this.board.units) {
+                let unit = this.board.units[unit_id];
+                if (this.actionData.target_hexes.includes(unit.hex.q + ';' + unit.hex.r)) {
+                    this.actionData.target_units.push(unit);
+                    unit.overTargetHandler = this.actions[this.currentAction].mouseover;
+                    unit.outTargetHandler = this.actions[this.currentAction].mouseout;
+                    unit.clickTargetHandler = this.actions[this.currentAction].unitClickHandler;
+                }
+            }
         }
     }
 }

@@ -62,11 +62,6 @@ class BaseUnit {
             .animate(100, '-', this.animation_delay).move(target_point.x, target_point.y)
             .animate(100, '-').move(source_point.x, source_point.y);
         target.getDamage(damage);
-//        target.hex.damage_indicator.text(damage.toString());
-//        target.hex.damage_indicator
-//            .animate(100, '-', this.animation_delay).attr({'opacity': 1})
-//            .animate(1000).font({'opacity': 0}).translate(0, -30)
-//            .animate(10).translate(0, 0);
     }
 
     getDamage(damage) {
@@ -96,6 +91,10 @@ class Hero extends BaseUnit {
         this.range_attack_hexes = board.grid.getHexesInRange(this.hex, this.attack_range + 1, ['empty', 'unit']);
         let coords = this.hex.toPoint();
         this.range_weapon = board.svg.circle(5).fill({color: 'black', opacity: 0});
+        this.spells = {};
+        hero_data.spells.forEach(spell => {
+            this.spells[spell.code_name] = spell.effects;
+        });
         // suit
         // weapon
     }
@@ -217,27 +216,6 @@ class Unit extends BaseUnit {
         if (!!this.clickTargetHandler) {
             this.clickTargetHandler(this);
         }
-//        if (['attack', 'range_attack'].includes(this.board.selectedAction)) {
-//            let action_range = 0
-//            if (this.board.selectedAction == 'attack') {
-//                action_range = this.board.hero.attack_range;
-//            } else if (this.board.selectedAction == 'range_attack') {
-//                action_range = this.board.hero.attack_range + 1;
-//            }
-//            if (this.board.grid.distance(this.hex, this.board.hero.hex) <= action_range) {
-//                this.board.component.requestAction({'action': this.board.selectedAction, 'target': this.pk});
-//            } else if (this.board.actionManager.actionData.path.length > 0) {
-//                if (this.hex != this.board.hero.path[0]) {
-//                    this.board.actionManager.actions.move.resetPath();
-//                    this.board.actionManager.actions.move.buildPath(this.hex);
-//                } else {
-//                    let hex_in_path = this.board.actionManager.actionData.path[this.board.actionManager.actionData.path.length - 1];
-//                    this.board.component.requestAction({'action': 'move', 'destination': hex_in_path.q + ';' + hex_in_path.r});
-//                }
-//            } else {
-//                this.board.actionManager.actions.move.buildPath(this.hex);
-//            }
-//        }
     }
 };
 
