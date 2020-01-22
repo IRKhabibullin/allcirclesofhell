@@ -20,7 +20,7 @@ class Hex:
     def distance_from_center(self):
         return max(abs(self.x), abs(self.y), abs(self.z))
 
-    def __str__(self):
+    def as_dict(self):
         return self.__dict__
 
 
@@ -135,4 +135,4 @@ class Board:
         """
         Get serialized board state
         """
-        return {'radius': self.radius, 'hexes': self.__hexes}
+        return {'radius': self.radius, 'hexes': {k: v.as_dict() for k, v in self.items()}}

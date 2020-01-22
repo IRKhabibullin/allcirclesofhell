@@ -95,6 +95,7 @@ class Unit(HandbookModel, BaseUnit):
 
 
 class Hero(BaseUnit):
+    """Main character in game"""
     name = models.CharField(max_length=50)
     weapon = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_weapon', null=True, blank=True)
     suit = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_suit', null=True, blank=True)
@@ -106,6 +107,7 @@ class Hero(BaseUnit):
 
 
 class GameModel(models.Model):
+    """Game data storing model"""
     created = models.DateTimeField(default=now)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     hero = models.ForeignKey(Hero, on_delete=models.CASCADE, null=True, blank=True)

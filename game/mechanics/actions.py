@@ -6,7 +6,7 @@ from game.models import BaseUnit
 
 def move(game_instance, action_data: dict) -> dict:
     """Make hero move"""
-    destination_hex = game_instance.board[action_data['destination']]
+    destination_hex = game_instance.board[action_data['target_hex']]
     if not destination_hex:
         return {'allowed': False}
     hero_hex = game_instance.board[game_instance.game.hero.position]
@@ -57,7 +57,7 @@ def path_of_fire(game_instance, action_data: dict) -> dict:
     target_hexes, targets = [], []
     for i in range(1, int(spell_effects['path_length']) + 1):
         hex_id = f"{hero_hex.q + dq * i};{hero_hex.r + dr * i}"
-        _hex = game_instance.board[hex_id, None]
+        _hex = game_instance.board[hex_id]
         if not _hex or _hex.occupied_by == 'obstacle':
             break
         target_hexes.append(hex_id)
@@ -76,23 +76,26 @@ def path_of_fire(game_instance, action_data: dict) -> dict:
 def shield_bash(game_instance, action_data: dict) -> dict:
     """Shield bash spell"""
     result = {'allowed': False}
+    spell = game_instance.game.hero.spells.filter(name='Shield bash')
     start_hex = game_instance.board[action_data['target_hex']]
     hero_hex = game_instance.board[game_instance.game.hero.position]
-    if not start_hex or game_instance.board.distance(hero_hex, start_hex) != 1:
+    if not spell or not start_hex:
+        return result
+    spell_effects = {item.effect.code_name: item.value for item in spell[0].spelleffect_set.all()}
+    if game_instance.board.distance(hero_hex, start_hex) != spell_effects['radius']:
         return result
     result['allowed'] = True
     target_hexes = list(set(game_instance.board.get_hexes_in_range(start_hex, 1)).intersection(
         game_instance.board.get_hexes_in_range(hero_hex, 1)) - {game_instance.game.hero.position})
     targets = {_unit.pk: {} for _unit in game_instance.units.values() if _unit.position in target_hexes}
     for _unit_id in targets:
-        damage = 5
         _unit = game_instance.units[_unit_id]
         unit_hex = game_instance.board[_unit.position]
         dq, dr = unit_hex.q - hero_hex.q, unit_hex.r - hero_hex.r
         hex_behind_id = f"{unit_hex.q + dq};{unit_hex.r + dr}"
         hex_behind = game_instance.board[hex_behind_id]
         if not hex_behind or hex_behind.occupied_by != 'empty':
-            damage *= 2
+            spell_effects['damage'] *= 2
         else:
             game_instance.board[_unit.position].occupied_by = 'empty'
             _unit.position = hex_behind_id
@@ -100,7 +103,8 @@ def shield_bash(game_instance, action_data: dict) -> dict:
             _unit.moves = list(game_instance.board.get_hexes_in_range(hex_behind, _unit.move_range, ['empty']).keys())
             _unit.attack_hexes = list(
                 game_instance.board.get_hexes_in_range(hex_behind, _unit.attack_range, ['empty', 'hero']).keys())
-        targets[_unit_id]['damage'] = game_instance.damage_instance(game_instance.game.hero, _unit, damage)
+        targets[_unit_id]['damage'] = game_instance.damage_instance(game_instance.game.hero, _unit,
+                                                                    spell_effects['damage'])
     result['targets'] = targets
     result['stunned_units'] = list(targets.keys())
     return result
@@ -109,9 +113,13 @@ def shield_bash(game_instance, action_data: dict) -> dict:
 def blink(game_instance, action_data: dict) -> dict:
     """Blink spell"""
     result = {'allowed': False}
+    spell = game_instance.game.hero.spells.filter(name='Blink')
     target_hex = game_instance.board[action_data['target_hex']]
     hero_hex = game_instance.board[game_instance.game.hero.position]
-    if not target_hex or game_instance.board.distance(hero_hex, target_hex) > 3 or target_hex.occupied_by != 'empty':
+    if not spell or not target_hex or target_hex.occupied_by != 'empty':
+        return result
+    spell_effects = {item.effect.code_name: item.value for item in spell[0].spelleffect_set.all()}
+    if game_instance.board.distance(hero_hex, target_hex) > spell_effects['radius']:
         return result
     result['allowed'] = True
     hero_hex.occupied_by = 'empty'

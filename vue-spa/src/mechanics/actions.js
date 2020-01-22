@@ -50,7 +50,7 @@ class ActionManager {
                     }
                     if (this.board.grid.distance(hex, this.board.hero.hex) <= this.board.hero.move_range) {
                         this.actions.move.resetPath();
-                        this.board.component.requestAction({'action': 'move', 'destination': hex.q + ';' + hex.r});
+                        this.board.component.requestAction({'action': 'move', 'target_hex': hex.q + ';' + hex.r});
                     } else {
                         this.actions.move.goLongPath(hex);
                     }
@@ -72,7 +72,7 @@ class ActionManager {
                         } else {
                             let hex_in_path = this.actionData.path[this.actionData.path.length - 1];
                             this.board.component.requestAction({'action': 'move',
-                                                                'destination': hex_in_path.q + ';' + hex_in_path.r});
+                                                                'target_hex': hex_in_path.q + ';' + hex_in_path.r});
                         }
                     } else {
                         this.actions.move.buildPath(hex);
