@@ -37,16 +37,17 @@ class GameInstance:
         self.board.clear_board()
 
         self.game.hero.position = f'0;{self.board.radius // 2}'
-        hero_hex = self.board.hexes[self.game.hero.position]
-        hero_hex['occupied_by'] = 'hero'
+        hero_hex = self.board[self.game.hero.position]
+        hero_hex.occupied_by = 'hero'
         self.game.hero.moves = list(
             self.board.get_hexes_in_range(hero_hex, self.game.hero.move_range, ['empty']).keys())
         self.game.hero.attack_hexes = list(
             self.board.get_hexes_in_range(hero_hex, self.game.hero.attack_range, ['empty', 'unit']).keys())
         max_unit_level = int(math.pow(2, math.floor(math.log2(self.game.round / 2)))) or 1
-        available_hexes = {_id for _id, _hex in self.board.hexes.items() if _hex['occupied_by'] == 'empty'}
+        available_hexes = {_id for _id, _hex in self.board.items() if _hex.occupied_by == 'empty'}
+        # area around hero, where units must not be placed
         clear_area_range = max(self.board.radius // 2 - self.game.round // 8, 1)
-        hexes_in_range = self.board.get_hexes_in_range(self.board.hexes[self.game.hero.position],
+        hexes_in_range = self.board.get_hexes_in_range(self.board[self.game.hero.position],
                                                        clear_area_range, ['empty', 'hero'])
         available_hexes = list(available_hexes - hexes_in_range.keys())
         shuffle(available_hexes)
@@ -62,8 +63,8 @@ class GameInstance:
                 unit = Unit.objects.get(level=unit_level)
                 unit.position = available_hexes.pop()
                 unit.pk = len(self.units)
-                _unit_hex = self.board.hexes[unit.position]
-                _unit_hex['occupied_by'] = 'unit'
+                _unit_hex = self.board[unit.position]
+                _unit_hex.occupied_by = 'unit'
                 self.units[unit.pk] = unit
             points_remain = int(points - u_count * unit_level)
             if points_remain:
@@ -72,19 +73,19 @@ class GameInstance:
         place_units(self.game.round, max_unit_level)
 
         for unit in self.units.values():
-            unit.moves = list(self.board.get_hexes_in_range(self.board.hexes[unit.position],
+            unit.moves = list(self.board.get_hexes_in_range(self.board[unit.position],
                                                             unit.move_range, ['empty']).keys())
-            unit.attack_hexes = list(self.board.get_hexes_in_range(self.board.hexes[unit.position],
+            unit.attack_hexes = list(self.board.get_hexes_in_range(self.board[unit.position],
                                                                    unit.attack_range, ['empty', 'hero']).keys())
 
     def update_moves(self):
-        hero_position = self.board.hexes.get(self.game.hero.position, None)
+        hero_position = self.board[self.game.hero.position]
         self.game.hero.moves = list(
             self.board.get_hexes_in_range(hero_position, self.game.hero.move_range, ['empty']).keys())
         self.game.hero.attack_hexes = list(
             self.board.get_hexes_in_range(hero_position, self.game.hero.attack_range, ['empty', 'unit']).keys())
         for unit in self.units.values():
-            _unit_hex = self.board.hexes[unit.position]
+            _unit_hex = self.board[unit.position]
             unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
             unit.attack_hexes = list(
                 self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty', 'hero']).keys())
@@ -116,7 +117,7 @@ class GameInstance:
             if unit.pk in except_list:
                 continue
             # try to find target to attack
-            targets = [_hex for _hex in unit.attack_hexes if self.board.hexes[_hex]['occupied_by'] == 'hero']
+            targets = [hex_id for hex_id in unit.attack_hexes if self.board[hex_id].occupied_by == 'hero']
             if targets:
                 # suppose units can attack only hero for now
                 attack_result = actions.attack(self, unit, self.game.hero)
@@ -135,10 +136,10 @@ class GameInstance:
         remaining_moves = set(unit.moves)
         while remaining_moves:
             _move_pos = remaining_moves.pop()
-            if self.board.hexes[_move_pos]['occupied_by'] == 'empty':
+            if self.board[_move_pos].occupied_by == 'empty':
                 break
         if _move_pos:
-            self.board.hexes[unit.position]['occupied_by'] = 'empty'
+            self.board[unit.position].occupied_by = 'empty'
             unit.position = _move_pos
             self.board.place_game_object(unit)
 
@@ -156,5 +157,5 @@ class GameInstance:
             # game over
             pass
         elif isinstance(target, Unit):
-            self.board.hexes[target.position]['occupied_by'] = 'empty'
+            self.board[target.position].occupied_by = 'empty'
             del self.units[target.pk]
