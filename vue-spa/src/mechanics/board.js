@@ -39,7 +39,7 @@ class Board {
             this.grid.update_hexes(actionData.board.hexes);
             this.actionManager.handleAction(actionData.action_data);
             this.actionManager.changeAction('move');
-            this.hero.update(actionData.game.hero, actionData.action_data);
+            this.hero.update(actionData.hero, actionData.action_data);
             this.update_units(actionData.units, actionData.units_actions);
         }
     }

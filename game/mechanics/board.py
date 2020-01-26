@@ -1,5 +1,7 @@
 from random import random
-from game.models import Unit
+
+from game.mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit, ocpHero
+from game.models import Unit, Hero
 
 # chances in percents
 OBSTACLE_CHANCE = 15
@@ -9,7 +11,7 @@ class Hex:
     """
     Hex object, used in board
     """
-    def __init__(self, q: int, r: int, occupied_by: str = 'empty'):
+    def __init__(self, q: int, r: int, occupied_by: str = ocpEmpty):
         self.q = q
         self.r = r
         self.x = q
@@ -17,10 +19,19 @@ class Hex:
         self.z = r
         self.occupied_by = occupied_by
 
+    @property
+    def id(self):
+        return f'{self.q};{self.r}'
+
     def distance_from_center(self):
+        """Distance from current hex to the center of board"""
         return max(abs(self.x), abs(self.y), abs(self.z))
 
+    def __str__(self):
+        return f'Hex({self.id}|{self.occupied_by})'
+
     def as_dict(self):
+        """Serialized representation"""
         return self.__dict__
 
 
@@ -53,16 +64,24 @@ class Board:
         self.add(start_hex)
         create_neighbors(start_hex)
 
-    def add(self, value):
+    def add(self, value) -> bool:
+        """
+        Add/update hex to board, if hex is in radius of board
+        Returns success of operation
+        """
         if isinstance(value, Hex) and value.distance_from_center() < self.radius:
             self.__hexes[f'{value.q};{value.r}'] = value
             return True
         return False
 
-    def __getitem__(self, key):
-        return self.__hexes.get(key, None)
+    def __getitem__(self, key) -> Hex:
+        return self.__hexes[key]
 
-    def __contains__(self, item):
+    def get(self, key, default_value=None):
+        """Returns hex by its key."""
+        return self.__hexes.get(key, default_value)
+
+    def __contains__(self, item) -> bool:
         return item in self.__hexes
 
     def __iter__(self):
@@ -70,6 +89,7 @@ class Board:
             yield key
 
     def items(self):
+        """Returns items of dict with all hexes in board"""
         return self.__hexes.items()
 
     def get_neighbors(self, _hex: Hex) -> list:
@@ -79,7 +99,7 @@ class Board:
         """
         _neighbors = []
         for bias in self.position_biases:
-            _neighbor = self[f"{_hex.q + bias[0]};{_hex.r + bias[1]}"]
+            _neighbor = self.get(f"{_hex.q + bias[0]};{_hex.r + bias[1]}")
             if _neighbor:
                 _neighbors.append(_neighbor)
         return _neighbors
@@ -101,18 +121,23 @@ class Board:
                         hexes_in_range[_hex_id] = _hex
         return hexes_in_range
 
-    def place_game_object(self, game_object):
+    def place_game_object(self, game_object, position):
         """
         Place game object in board according to it's position.
-        Game object must have <position> and <pk> attributes. Usually its django models
+        Game object must have <position> and <pk> attributes. Usually its django models of game objects
         """
         # maybe need to check for occupied. And add param 'forced_placing'
-        if game_object.position not in self.__hexes:
-            return
-        if isinstance(game_object, Unit):
-            self[game_object.position].occupied_by = 'unit'
-            return
-        self[game_object.position].occupied_by = game_object.pk
+        if position in self.__hexes:
+            if game_object.position:
+                game_object.position.occupied_by = ocpEmpty
+            game_object.position = self[position]
+            if isinstance(game_object, Unit):
+                game_object.position.occupied_by = ocpUnit
+                return
+            if isinstance(game_object, Hero):
+                game_object.position.occupied_by = ocpHero
+                return
+            self[position].occupied_by = game_object.pk
 
     def clear_board(self):
         """
@@ -120,9 +145,9 @@ class Board:
         """
         # todo move obstacles generating into function and call it separately
         for _hex in self.__hexes.values():
-            _hex.occupied_by = 'empty'
+            _hex.occupied_by = ocpEmpty
             if int(random() * 100) < OBSTACLE_CHANCE:
-                _hex.occupied_by = 'obstacle'
+                _hex.occupied_by = ocpObstacle
 
     @staticmethod
     def distance(hex_a: Hex, hex_b: Hex):

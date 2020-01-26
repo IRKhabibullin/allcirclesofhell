@@ -32,6 +32,11 @@ class HeroSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['name', 'health', 'damage', 'move_range', 'attack_range', 'armor', 'skills', 'spells', 'img_path',
                   'suit', 'weapon', 'position', 'moves', 'attack_hexes']
 
+    position = serializers.SerializerMethodField('hero_position')
+
+    def hero_position(self, hero):
+        return f'{hero.position.q};{hero.position.r}'
+
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -53,11 +58,25 @@ class UnitSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['pk', 'name', 'health', 'damage', 'attack_range', 'armor', 'skills', 'spells', 'img_path',
                   'move_range', 'position', 'moves', 'attack_hexes']
 
+    position = serializers.SerializerMethodField('unit_position')
+
+    def unit_position(self, unit):
+        return f'{unit.position.q};{unit.position.r}'
+
 
 class GameInstanceSerializer(serializers.Serializer):
     board = serializers.SerializerMethodField('game_board')
-    game = GameSerializer(read_only=True)
+    round = serializers.SerializerMethodField('game_round')
+    hero = HeroSerializer()
+    game_id = serializers.SerializerMethodField('game_pk')
+    # game = GameSerializer(read_only=True)
     units = DictField(child=UnitSerializer())
 
     def game_board(self, game):
         return game.board.get_state()
+
+    def game_round(self, game):
+        return game._game.round
+
+    def game_pk(self, game):
+        return game._game.pk

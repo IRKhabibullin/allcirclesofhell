@@ -57,9 +57,9 @@ class ActionManager {
                 },
                 unitClickHandler: unit => {
                     if (this.board.grid.distance(unit.hex, this.board.hero.hex) <= this.board.hero.attack_range) {
-                        this.board.component.requestAction({'action': 'attack', 'target': unit.pk});
+                        this.board.component.requestAction({'action': 'attack', 'target_unit': unit.pk});
                     } else if (this.board.grid.distance(unit.hex, this.board.hero.hex) <= this.board.hero.attack_range + 1) {
-                        this.board.component.requestAction({'action': 'range_attack', 'target': unit.pk});
+                        this.board.component.requestAction({'action': 'range_attack', 'target_unit': unit.pk});
                     } else {
                         this.actions.move.goLongPath(unit.hex);
                     }
@@ -187,8 +187,8 @@ class ActionManager {
                             opacity: 0
                         });
                     }
-                    for (var unit_id in actionData.targets) {
-                        this.board.units[unit_id].getDamage(actionData.targets[unit_id].damage);
+                    for (var unit_id in actionData.target_units) {
+                        this.board.units[unit_id].getDamage(actionData.target_units[unit_id].damage);
                     }
                 }
             },
@@ -237,8 +237,8 @@ class ActionManager {
                     target[0] -= this.board.hero.hex.q;
                     target[1] -= this.board.hero.hex.r;
                     let angle = angles[target[0] + ';' + target[1]];
-                    for (var unit_id in actionData.targets) {
-                        this.board.units[unit_id].getDamage(actionData.targets[unit_id].damage);
+                    for (var unit_id in actionData.target_units) {
+                        this.board.units[unit_id].getDamage(actionData.target_units[unit_id].damage);
                     }
                     let cone = this.animation_elements.image('./src/assets/bash_wave.png', 60, 60)
                     let animation = anime.timeline({

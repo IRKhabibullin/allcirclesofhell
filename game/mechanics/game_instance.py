@@ -1,9 +1,10 @@
 import math
 from random import shuffle
 
-from game.mechanics import actions
+from game.mechanics.actions import ActionManager, ActionNotAllowedError
 from game.models import GameModel, Unit, Hero
 from game.mechanics.board import Board
+from game.mechanics.constants import ocpHero, ocpEmpty, ocpUnit
 
 
 class GameInstance:
@@ -15,16 +16,23 @@ class GameInstance:
         Loading board from passed game model or generating new
         """
         if not game_model:
-            self.game = GameModel()
+            self._game = GameModel()
         else:
-            self.game = game_model
+            self._game = game_model
 
-        if self.game.state != '{}':
+        if self._game.state != '{}':
             # from self.state
             pass
         else:
             self.board = Board(6)
-        self.units = {}
+
+    @property
+    def hero(self):
+        return self._game.hero
+
+    @property
+    def units(self):
+        return self._game.units
 
     def init_round(self):
         """
@@ -33,22 +41,17 @@ class GameInstance:
         Setting hero position
         Counting and placing units
         """
-        self.units = {}
+        self._game.units = {}
         self.board.clear_board()
 
-        self.game.hero.position = f'0;{self.board.radius // 2}'
-        hero_hex = self.board[self.game.hero.position]
-        hero_hex.occupied_by = 'hero'
-        self.game.hero.moves = list(
-            self.board.get_hexes_in_range(hero_hex, self.game.hero.move_range, ['empty']).keys())
-        self.game.hero.attack_hexes = list(
-            self.board.get_hexes_in_range(hero_hex, self.game.hero.attack_range, ['empty', 'unit']).keys())
-        max_unit_level = int(math.pow(2, math.floor(math.log2(self.game.round / 2)))) or 1
-        available_hexes = {_id for _id, _hex in self.board.items() if _hex.occupied_by == 'empty'}
+        self.hero.position = self.board[f'0;{self.board.radius // 2}']
+        self.hero.position.occupied_by = ocpHero
+        max_unit_level = int(math.pow(2, math.floor(math.log2(self._game.round / 2)))) or 1
+        available_hexes = {_id for _id, _hex in self.board.items() if _hex.occupied_by == ocpEmpty}
         # area around hero, where units must not be placed
-        clear_area_range = max(self.board.radius // 2 - self.game.round // 8, 1)
-        hexes_in_range = self.board.get_hexes_in_range(self.board[self.game.hero.position],
-                                                       clear_area_range, ['empty', 'hero'])
+        clear_area_range = max(self.board.radius // 2 - self._game.round // 8, 1)
+        hexes_in_range = self.board.get_hexes_in_range(self.hero.position, clear_area_range,
+                                                       [ocpEmpty, ocpHero])
         available_hexes = list(available_hexes - hexes_in_range.keys())
         shuffle(available_hexes)
 
@@ -61,51 +64,42 @@ class GameInstance:
             u_count = points if unit_level == 1 else round((points // 2) / unit_level)
             for i in range(u_count):
                 unit = Unit.objects.get(level=unit_level)
-                unit.position = available_hexes.pop()
                 unit.pk = len(self.units)
-                _unit_hex = self.board[unit.position]
-                _unit_hex.occupied_by = 'unit'
+                self.board.place_game_object(unit, available_hexes.pop())
+                # unit.position.occupied_by = ocpUnit
+                # unit.position = self.board[available_hexes.pop()]
                 self.units[unit.pk] = unit
             points_remain = int(points - u_count * unit_level)
             if points_remain:
                 place_units(points_remain, unit_level // 2)
 
-        place_units(self.game.round, max_unit_level)
-
-        for unit in self.units.values():
-            unit.moves = list(self.board.get_hexes_in_range(self.board[unit.position],
-                                                            unit.move_range, ['empty']).keys())
-            unit.attack_hexes = list(self.board.get_hexes_in_range(self.board[unit.position],
-                                                                   unit.attack_range, ['empty', 'hero']).keys())
+        place_units(self._game.round, max_unit_level)
+        self.update_moves()
 
     def update_moves(self):
-        hero_position = self.board[self.game.hero.position]
-        self.game.hero.moves = list(
-            self.board.get_hexes_in_range(hero_position, self.game.hero.move_range, ['empty']).keys())
-        self.game.hero.attack_hexes = list(
-            self.board.get_hexes_in_range(hero_position, self.game.hero.attack_range, ['empty', 'unit']).keys())
+        self.hero.moves = list(
+            self.board.get_hexes_in_range(self.hero.position, self.hero.move_range, [ocpEmpty]).keys())
+        self.hero.attack_hexes = list(self.board.get_hexes_in_range(self.hero.position, self.hero.attack_range,
+                                                                    [ocpEmpty, ocpUnit]).keys())
         for unit in self.units.values():
-            _unit_hex = self.board[unit.position]
-            unit.moves = list(self.board.get_hexes_in_range(_unit_hex, unit.move_range, ['empty']).keys())
-            unit.attack_hexes = list(
-                self.board.get_hexes_in_range(_unit_hex, unit.attack_range, ['empty', 'hero']).keys())
+            unit.moves = list(self.board.get_hexes_in_range(unit.position, unit.move_range, [ocpEmpty]).keys())
+            unit.attack_hexes = list(self.board.get_hexes_in_range(unit.position, unit.attack_range,
+                                                                   [ocpEmpty, ocpHero]).keys())
 
     def hero_action(self, action_data: dict) -> dict:
         """
         Make hero action
         """
         action_data['allowed'] = False
-        if action_data['action'] in ['attack', 'range_attack']:
-            action_data.update(getattr(actions, action_data['action'])(self, self.game.hero,
-                                                                       self.units[action_data['target']]))
+        try:
+            action_result = ActionManager.execute(self, action_data)
+        except ActionNotAllowedError:
+            action_result = {'allowed': False}
         else:
-            action_data.update(getattr(actions, action_data['action'])(self, action_data))
-        if not action_data['allowed']:
-            return action_data
-        # update hero's and units' possible moves
-        action_data['units_actions'] = self.units_action(except_list=action_data.pop('stunned_units', []))
-        self.update_moves()
-        return action_data
+            # update hero's and units' possible moves
+            action_result['units_actions'] = self.units_action(except_list=action_result.pop('stunned_units', []))
+            self.update_moves()
+        return action_result
 
     def units_action(self, except_list: list) -> list:
         """
@@ -117,10 +111,11 @@ class GameInstance:
             if unit.pk in except_list:
                 continue
             # try to find target to attack
-            targets = [hex_id for hex_id in unit.attack_hexes if self.board[hex_id].occupied_by == 'hero']
+            targets = [hex_id for hex_id in unit.attack_hexes if self.board[hex_id].occupied_by == ocpHero]
             if targets:
                 # suppose units can attack only hero for now
-                attack_result = actions.attack(self, unit, self.game.hero)
+                attack_result = ActionManager.execute(self, {'action': 'attack', 'hero_attack': False,
+                                                             'target_unit': unit.pk})
                 if attack_result['allowed']:
                     units_actions.append({'source': str(unit.pk), 'damage_dealt': attack_result['damage']})
             else:
@@ -136,12 +131,10 @@ class GameInstance:
         remaining_moves = set(unit.moves)
         while remaining_moves:
             _move_pos = remaining_moves.pop()
-            if self.board[_move_pos].occupied_by == 'empty':
+            if self.board[_move_pos].occupied_by == ocpEmpty:
                 break
         if _move_pos:
-            self.board[unit.position].occupied_by = 'empty'
-            unit.position = _move_pos
-            self.board.place_game_object(unit)
+            self.board.place_game_object(unit, _move_pos)
 
     def damage_instance(self, source, target, damage):
         # apply damage modifiers
@@ -157,5 +150,5 @@ class GameInstance:
             # game over
             pass
         elif isinstance(target, Unit):
-            self.board[target.position].occupied_by = 'empty'
+            target.position.occupied_by = ocpEmpty
             del self.units[target.pk]

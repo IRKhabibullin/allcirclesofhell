@@ -115,6 +115,8 @@ class GameModel(models.Model):
     # jsoned state of game. Need to save board state, shops assortment and so on
     state = models.TextField(default='{}')
 
+    units = {}
+
     # def save_state(self):
 
     # def save(self, *args, **kwargs):

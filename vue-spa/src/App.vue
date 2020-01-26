@@ -8,13 +8,13 @@
                 </div>
                 <LoginPanel @login_state_changed="setLoginState" v-if="game_state === 'logged_out'"></LoginPanel>
                 <GamesList @game_selected="getGameById" v-else-if="game_state === 'logged_in'"></GamesList>
-                <CharacterInfo :hero="game_info.game.hero" v-else-if="game_state === 'game_loaded'"></CharacterInfo>
+                <CharacterInfo :hero="game_info.hero" v-else-if="game_state === 'game_loaded'"></CharacterInfo>
                 <b-button type="reset" variant="danger" v-if="game_state === 'game_loaded'" v-on:click="setLoginState('logged_in')">Games list</b-button>
             </aside>
             <Playground
                 :units="game_info.units"
                 :board_data="game_info.board"
-                :hero="game_info.game.hero"
+                :hero="game_info.hero"
                 v-if="game_state === 'game_loaded'"
                 class="col-10 px-0"
                 @game_action="requestAction"
@@ -76,14 +76,14 @@
                 })
             },
             requestAction(action_data) {
-                action_data['game_id'] = this.game_info.game.pk
+                action_data['game_id'] = this.game_info.game_id
                 this.$http.post(localStorage.getItem('endpoint') + '/game/', action_data, {
                     headers: {
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }
                 })
                 .then(response => {
-                    this.game_info.game.hero = response.data.game.hero;
+                    this.game_info.hero = response.data.hero;
                     this.$refs.playground.handleAction(response.data);
                 })
                 .catch(error => {
@@ -92,7 +92,7 @@
             },
             closeGame() {
                 let data = {
-                    'game_id': this.game_info.game.pk
+                    'game_id': this.game_info.game_id
                 }
                 this.$http.post(localStorage.getItem('endpoint') + '/games/close_game/', data, {
                     headers: {
