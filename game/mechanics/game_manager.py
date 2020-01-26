@@ -38,15 +38,12 @@ class GameManager(object):
         Get loaded game or query from db already existing game
         """
         if game_id in self.game_instances:
-            print(f'game {game_id}  already loaded')
             return self.game_instances[game_id]
         _game = GameModel.objects.get(pk=game_id)
         if _game:
             game_instance = GameInstance(_game)
-            print(f'game {game_id} just loaded')
             self.game_instances[game_id] = game_instance
             return game_instance
-        print(f"game {game_id} doesn't exist")
 
     @staticmethod
     def get_games_by_user(user: User) -> list:

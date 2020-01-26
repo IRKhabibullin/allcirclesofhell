@@ -1,7 +1,7 @@
 from unittest import TestCase
 from random import random
-from ..mechanics.board import Board
-from ..mechanics.constants import ocpEmpty, ocpObstacle
+from ..mechanics.board import Board, Hex
+from ..mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit
 
 
 class BoardTestCase(TestCase):
@@ -11,6 +11,13 @@ class BoardTestCase(TestCase):
     def test_created(self):
         hexes_count = 3 * self.board.radius ** 2 - 3 * self.board.radius + 1
         self.assertEqual(len(self.board.items()), hexes_count)
+
+    def test_add(self):
+        q, r = 2, 3
+        self.board.get(f'{q};{r}').occupied_by = ocpObstacle
+        test_hex = Hex(q, r, ocpUnit)
+        self.board.add(test_hex)
+        self.assertEqual(self.board.get(f'{q};{r}').occupied_by, ocpUnit)
 
     def test_get_neighbors(self):
         if self.board.radius > 1:
@@ -99,3 +106,13 @@ class BoardTestCase(TestCase):
             for _range in _data['ranges']:
                 hexes_in_range = self.board.get_hexes_in_range(_data['hex'], _range[0])
                 self.assertTrue(len(hexes_in_range), _range[1])
+
+    def test_distance(self):
+        hex_a = self.board.get('0;3')
+        hex_b = self.board.get('1;-2')
+        self.assertEqual(self.board.distance(hex_a, hex_b), 5)
+
+    def test_get_state(self):
+        state = self.board.get_state()
+        self.assertEqual(state['radius'], self.board.radius)
+        self.assertEqual(len(state['hexes']), len(self.board.items()))

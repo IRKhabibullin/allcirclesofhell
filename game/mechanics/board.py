@@ -21,6 +21,7 @@ class Hex:
 
     @property
     def id(self):
+        """Hex id"""
         return f'{self.q};{self.r}'
 
     def distance_from_center(self):
