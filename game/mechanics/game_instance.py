@@ -4,7 +4,7 @@ from random import shuffle
 from game.mechanics.actions import ActionManager, ActionNotAllowedError
 from game.models import GameModel, Unit, Hero
 from game.mechanics.board import Board
-from game.mechanics.constants import ocpHero, ocpEmpty, ocpUnit
+from game.mechanics.constants import ocpHero, ocpEmpty, ocpUnit, BOARD_RADIUS
 
 
 class GameInstance:
@@ -21,10 +21,9 @@ class GameInstance:
             self._game = game_model
 
         if self._game.state != '{}':
-            # from self.state
-            pass
+            self.board = Board.load_state(self._game.state['board'])
         else:
-            self.board = Board(6)
+            self.board = Board(BOARD_RADIUS)
 
     @property
     def hero(self):
@@ -43,15 +42,12 @@ class GameInstance:
         """
         self._game.units = {}
         self.board.clear_board()
+        self.board.place_game_object(self.hero, f'0;{self.board.radius // 2}')
 
-        self.hero.position = self.board[f'0;{self.board.radius // 2}']
-        self.hero.position.occupied_by = ocpHero
-        max_unit_level = int(math.pow(2, math.floor(math.log2(self._game.round / 2)))) or 1
         available_hexes = {_id for _id, _hex in self.board.items() if _hex.occupied_by == ocpEmpty}
         # area around hero, where units must not be placed
         clear_area_range = max(self.board.radius // 2 - self._game.round // 8, 1)
-        hexes_in_range = self.board.get_hexes_in_range(self.hero.position, clear_area_range,
-                                                       [ocpEmpty, ocpHero])
+        hexes_in_range = self.board.get_hexes_in_range(self.hero.position, clear_area_range, [ocpEmpty, ocpHero])
         available_hexes = list(available_hexes - hexes_in_range.keys())
         shuffle(available_hexes)
 
@@ -66,13 +62,12 @@ class GameInstance:
                 unit = Unit.objects.get(level=unit_level)
                 unit.pk = len(self.units)
                 self.board.place_game_object(unit, available_hexes.pop())
-                # unit.position.occupied_by = ocpUnit
-                # unit.position = self.board[available_hexes.pop()]
                 self.units[unit.pk] = unit
             points_remain = int(points - u_count * unit_level)
             if points_remain:
                 place_units(points_remain, unit_level // 2)
 
+        max_unit_level = int(math.pow(2, math.floor(math.log2(self._game.round / 2)))) or 1
         place_units(self._game.round, max_unit_level)
         self.update_moves()
 

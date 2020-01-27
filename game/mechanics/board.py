@@ -11,7 +11,7 @@ class Hex:
     """
     Hex object, used in board
     """
-    def __init__(self, q: int, r: int, occupied_by: str = ocpEmpty):
+    def __init__(self, q: int, r: int, occupied_by: str = ocpEmpty, **kwargs):
         self.q = q
         self.r = r
         self.x = q
@@ -44,9 +44,7 @@ class Board:
         (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
     ]
 
-    def __init__(self, radius: int):
-        self.radius = radius
-        self.__hexes = {}
+    def __init__(self, radius: int, hexes: dict = None):
 
         def create_neighbors(_hex: Hex):
             """
@@ -60,18 +58,30 @@ class Board:
                 new_hex = Hex(*new_pos)
                 if self.add(new_hex):
                     create_neighbors(new_hex)
-        # todo write algorithms for obstacles generating
-        start_hex = Hex(0, 0)
-        self.add(start_hex)
-        create_neighbors(start_hex)
 
-    def add(self, value) -> bool:
+        self.radius = radius
+        self.__hexes = {}
+        if not hexes:
+            # todo write algorithms for obstacles generating
+            start_hex = Hex(0, 0)
+            self.add(start_hex)
+            create_neighbors(start_hex)
+        else:
+            for _hex in hexes:
+                self.add(Hex(**_hex))
+
+    @classmethod
+    def load_state(cls, board_state: dict):
+        """Load board from saved state"""
+        return cls(board_state['radius'], board_state['hexes'])
+
+    def add(self, _hex) -> bool:
         """
         Add/update hex to board, if hex is in radius of board
         Returns success of operation
         """
-        if isinstance(value, Hex) and value.distance_from_center() < self.radius:
-            self.__hexes[f'{value.q};{value.r}'] = value
+        if isinstance(_hex, Hex) and _hex.distance_from_center() < self.radius:
+            self.__hexes[f'{_hex.q};{_hex.r}'] = _hex
             return True
         return False
 
