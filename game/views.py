@@ -87,12 +87,15 @@ class GameAction(APIView):
         """
         Handle actions
         """
-        response_data = request.data
+        response_data = {}
+        print('request data', request.data)
         game_instance = self.gm.get_game(str(request.data['game_id']))
-        action_result = game_instance.hero_action(request.data)
-        units_actions = action_result.pop('units_actions')
-        response_data.update(action_result)
-        response_data.update(GameInstanceSerializer(game_instance).data)
-        for u_action in units_actions:
-            response_data['units'][u_action['source']]['action'] = 'attack'
+        action_data = {'action': request.data['action'], **game_instance.hero_action(request.data)}
+        if action_data['allowed']:
+            response_data = GameInstanceSerializer(game_instance).data
+            units_actions = action_data.pop('units_actions', [])
+            for u_action in units_actions:
+                response_data['units'][u_action['source']]['action'] = 'attack'
+                response_data['units'][u_action['source']]['damage_dealt'] = u_action['damage_dealt']
+        response_data['action_data'] = action_data
         return Response(response_data)

@@ -9,6 +9,7 @@ class HandbookModel(models.Model):
     Model for storing sets of game objects, like list of existing spells, or bestiary.
     It should not store data for every game instance, it's common for all the games.
     """
+    code_name = models.CharField(max_length=50, null=True)
     name = models.CharField(max_length=50, unique=True)
 
     class Meta:
@@ -22,12 +23,13 @@ class HandbookModel(models.Model):
 
 
 class Effect(HandbookModel):
-    effects = models.TextField()
+    """Table listing all effects available in game"""
     description = models.TextField(default='Not provided')
     # trigger = models.?
 
 
 class Skill(HandbookModel):
+    """Table listing all skills available in game"""
     requirements = models.ManyToManyField('self', blank=True)
     effects = models.ManyToManyField(Effect, blank=True)
     description = models.TextField(default='Not provided')
@@ -36,6 +38,7 @@ class Skill(HandbookModel):
 
 
 class Item(HandbookModel):
+    """Table listing all items available in game"""
     cost = models.IntegerField()
     effects = models.ManyToManyField(Effect, blank=True)
     description = models.TextField(default='Not provided')
@@ -43,11 +46,22 @@ class Item(HandbookModel):
 
 
 class Spell(HandbookModel):
+    """Table listing all spells available in game"""
     cost = models.IntegerField()
-    effects = models.ManyToManyField(Effect, blank=True)
+    effects = models.ManyToManyField(Effect, through='SpellEffect', through_fields=('spell', 'effect'), blank=True)
     description = models.TextField(default='Not provided')
     # school = models.IntegerField(default=0) it must be enum field
     img_path = models.TextField(default='./src/assets/spell.jpeg')
+
+
+class SpellEffect(models.Model):
+    """Intermediary table to bind spells and effects"""
+    spell = models.ForeignKey(Spell, on_delete=models.CASCADE)
+    effect = models.ForeignKey(Effect, on_delete=models.CASCADE)
+    value = models.FloatField(default=0.0)
+
+    def __str__(self):
+        return f'{self.spell.code_name}.{self.effect.code_name}'
 
 
 class BaseUnit(models.Model):
@@ -81,6 +95,7 @@ class Unit(HandbookModel, BaseUnit):
 
 
 class Hero(BaseUnit):
+    """Main character in game"""
     name = models.CharField(max_length=50)
     weapon = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_weapon', null=True, blank=True)
     suit = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_suit', null=True, blank=True)
@@ -92,12 +107,15 @@ class Hero(BaseUnit):
 
 
 class GameModel(models.Model):
+    """Game data storing model"""
     created = models.DateTimeField(default=now)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     hero = models.ForeignKey(Hero, on_delete=models.CASCADE, null=True, blank=True)
     round = models.IntegerField(default=1)  # round in the game
     # jsoned state of game. Need to save board state, shops assortment and so on
     state = models.TextField(default='{}')
+
+    units = {}
 
     # def save_state(self):
 
