@@ -1,6 +1,10 @@
 <template>
     <b-list-group class="align-items-start justify-content-start">
+        <b-card-title>Games list</b-card-title>
         <!-- another b-list-group-item for new game creating -->
+        <b-list-group-item href="#" class="flex-column" v-on:click="startNew">
+            <small>Start new</small>
+        </b-list-group-item>
         <b-list-group-item href="#" class="flex-column" v-for="game in games" v-on:click="gameSelected(game.game_id)">
             <div>
                 <h5 class="mb-1 ">Hero: {{ game.hero_name }}</h5>
@@ -45,6 +49,9 @@
             },
             gameSelected(game_id) {
                 this.$emit('game_selected', game_id);
+            },
+            startNew() {
+                this.$emit('start_new');
             }
         }
     }

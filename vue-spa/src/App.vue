@@ -7,9 +7,13 @@
                     <b-button type="reset" variant="danger" v-on:click="setLoginState('logged_out')">Log out</b-button>
                 </div>
                 <LoginPanel @login_state_changed="setLoginState" v-if="game_state === 'logged_out'"></LoginPanel>
-                <GamesList @game_selected="getGameById" v-else-if="game_state === 'logged_in'"></GamesList>
-                <CharacterInfo :hero="game_info.hero" v-else-if="game_state === 'game_loaded'"></CharacterInfo>
-                <b-button type="reset" variant="danger" v-if="game_state === 'game_loaded'" v-on:click="setLoginState('logged_in')">Games list</b-button>
+                <GamesList
+                    @start_new="startNew"
+                    @game_selected="getGameById"
+                    v-else-if="game_state === 'logged_in'"
+                ></GamesList>
+                <CharacterInfo :hero="game_info.hero" v-else-if="game_state == 'game_loaded'"></CharacterInfo>
+                <b-button type="reset" variant="danger" v-if="game_state == 'game_loaded'" v-on:click="setLoginState('logged_in')">Games list</b-button>
             </aside>
             <Playground
                 :units="game_info.units"
@@ -62,6 +66,21 @@
             },
             getGameById(game_id) {
                 this.$http.get(localStorage.getItem('endpoint') + '/games/' + game_id, {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {
+                    this.game_info = response.data;
+                    console.log('New game', this.game_info);
+                    this.game_state = 'game_loaded';
+                })
+                .catch(error => {
+                    console.log('Failed to get game', error);
+                })
+            },
+            startNew() {
+                this.$http.get(localStorage.getItem('endpoint') + '/games/', {
                     headers: {
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }

@@ -11,7 +11,7 @@ class GameManager(object):
 
     @staticmethod
     def instance():
-        """ Static access method. """
+        """Static access method"""
         if GameManager.__instance is None:
             GameManager()
         return GameManager.__instance
@@ -23,32 +23,37 @@ class GameManager(object):
             GameManager.__instance = self
         self.game_instances = {}
 
-    def new_game(self, user_id: int) -> int:
-        """
-        Create new game and bind user to it. Returns game id
-        """
-        _user = User.objects.get(pk=user_id)
-        _game = GameModel.objects.create(user=_user)
-        game_instance = GameInstance(_game)
-        self.game_instances[_game.pk] = game_instance
-        return _game.pk
+    def new_game(self, user_id: int, hero: dict) -> int:
+        """Create new game and bind user to it. Returns game id"""
+        game_id, game_instance = GameInstance.new(user_id, hero)
+        self.game_instances[game_id] = game_instance
+        return game_id
 
     def get_game(self, game_id: int) -> GameInstance:
-        """
-        Get loaded game or query from db already existing game
-        """
+        """Get loaded game or query already existing game from db"""
         if game_id in self.game_instances:
             return self.game_instances[game_id]
-        _game = GameModel.objects.get(pk=game_id)
-        if _game:
-            game_instance = GameInstance(_game)
+        game_instance = GameInstance.load(game_id)
+        if game_instance:
             self.game_instances[game_id] = game_instance
             return game_instance
 
+    def delete_game(self, game_id: int) -> bool:
+        if game_id in self.game_instances:
+            _game = self.game_instances[game_id]
+            del self.game_instances[game_id]
+        else:
+            _game = GameModel.objects.filter(pk=game_id)
+            if not _game:
+                return False
+            _game = _game[0]
+        del_count, del_objects = self.game_instances[game_id].delete()
+        print(f'Deleted {del_count} objects: {del_objects}')
+        return bool(del_count)
+
+
     @staticmethod
     def get_games_by_user(user: User) -> list:
-        """
-        Get list of games of given user
-        """
+        """Get list of games of given user"""
         games = GameModel.objects.filter(user=user)
         return games
