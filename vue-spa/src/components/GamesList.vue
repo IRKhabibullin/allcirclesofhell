@@ -1,10 +1,30 @@
 <template>
     <b-list-group class="align-items-center justify-content-start">
         <b-card-title>Games list</b-card-title>
-        <!-- another b-list-group-item for new game creating -->
-        <b-list-group-item href="#" class="flex-column" v-on:click="startNew">
-            <small>Start new</small>
-        </b-list-group-item>
+        <b-list-group-item id="start-new-button" href="#" class="flex-column">Start new</b-list-group-item>
+        <b-popover
+            target="start-new-button"
+            triggers="click"
+            :show.sync="showPopover"
+            placement="auto"
+        >
+            <template v-slot:title>New game</template>
+            <div>
+                <b-form-group
+                    label="Hero name"
+                    label-cols="4"
+                    class="mb-1"
+                    description="Set a name for your hero"
+                    invalid-feedback="This field is required"
+                >
+                    <b-form-input v-model="newHeroName" size="sm"></b-form-input>
+                </b-form-group>
+                <div class="float-right p-1">
+                    <b-button @click="showPopover = false" size="sm" variant="danger">Cancel</b-button>
+                    <b-button @click="startNew" size="sm" variant="primary">Ok</b-button>
+                </div>
+            </div>
+        </b-popover>
         <b-list-group-item href="#"
             class="flex-column"
             v-for="game in games"
@@ -28,7 +48,9 @@
     export default {
         data () {
             return {
-                games: []
+                games: [],
+                showPopover: false,
+                newHeroName: null
             }
         },
 
@@ -74,7 +96,8 @@
                 this.$emit('game_selected', game_id);
             },
             startNew() {
-                this.$emit('start_new');
+                this.showPopover = false;
+                this.$emit('start_new', this.newHeroName);
             }
         }
     }

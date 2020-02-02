@@ -79,10 +79,10 @@
                     console.log('Failed to get game', error);
                 })
             },
-            startNew() {
+            startNew(newHeroName) {
                 let data = {
                     'hero': {
-                        'name': 'Saturo'
+                        'name': newHeroName
                     }
                 }
                 this.$http.post(localStorage.getItem('endpoint') + '/games/', data, {
