@@ -1,8 +1,9 @@
+import json
 import math
 from random import shuffle
 
 from game.mechanics.actions import ActionManager, ActionNotAllowedError
-from game.models import User, GameModel, Unit, Hero
+from game.models import User, GameModel, Unit, Hero, Item
 from game.mechanics.board import Board
 from game.mechanics.constants import ocpHero, ocpEmpty, ocpUnit
 
@@ -16,20 +17,22 @@ class GameInstance:
         Loading board from passed game model or generating new
         """
         self._game = game_model
-        self.board = Board(**self._game.state['board'])
+        game_state = json.loads(self._game.state)
+        self.board = Board(**game_state.get('board', {}))
 
     @classmethod
-    def new(cls, user_id: int, hero: dict):
+    def new(cls, user: User, hero: dict):
         """Create new game but not save"""
-        _user = User.objects.get(pk=user_id)
-        _game = GameModel(user=_user, hero=Hero(name=hero['name']))
+        hero = Hero.objects.create(name=hero['name'], weapon=Item.objects.get(name='Sword'),
+                                   suit=Item.objects.get(name='Cuirass'))
+        _game = GameModel.objects.create(user=user, hero=hero)
         _instance = cls(_game)
         return _game.pk, _instance
 
     @classmethod
     def load(cls, game_id):
         """Load already created game"""
-        _game = GameModel(pk=game_id)
+        _game = GameModel.objects.get(pk=game_id)
         if _game:
             return cls(_game)
 

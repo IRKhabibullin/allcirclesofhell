@@ -23,11 +23,11 @@ class GameManager(object):
             GameManager.__instance = self
         self.game_instances = {}
 
-    def new_game(self, user_id: int, hero: dict) -> int:
+    def new_game(self, user: User, hero: dict) -> int:
         """Create new game and bind user to it. Returns game id"""
-        game_id, game_instance = GameInstance.new(user_id, hero)
+        game_id, game_instance = GameInstance.new(user, hero)
         self.game_instances[game_id] = game_instance
-        return game_id
+        return game_instance
 
     def get_game(self, game_id: int) -> GameInstance:
         """Get loaded game or query already existing game from db"""
@@ -47,7 +47,8 @@ class GameManager(object):
             if not _game:
                 return False
             _game = _game[0]
-        del_count, del_objects = self.game_instances[game_id].delete()
+        del_count, del_objects = _game.hero.delete(keep_parents=False)
+        # del_count, del_objects = self.game_instances[game_id].delete()
         print(f'Deleted {del_count} objects: {del_objects}')
         return bool(del_count)
 

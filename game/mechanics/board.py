@@ -44,7 +44,7 @@ class Board:
         (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
     ]
 
-    def __init__(self, radius: int, hexes: dict = None):
+    def __init__(self, radius: int = None, hexes: dict = None):
 
         def create_neighbors(_hex: Hex):
             """

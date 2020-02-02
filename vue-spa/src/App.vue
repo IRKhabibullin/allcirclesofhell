@@ -2,11 +2,11 @@
     <div id="app">
         <main class="row">
             <aside class="col-2 px-0 ml-4 mt-2">
-                <div v-show="game_state !== 'logged_out'">
+                <div v-show="game_state != 'logged_out'">
                     <label>{{ this.username }}</label>
                     <b-button type="reset" variant="danger" v-on:click="setLoginState('logged_out')">Log out</b-button>
                 </div>
-                <LoginPanel @login_state_changed="setLoginState" v-if="game_state === 'logged_out'"></LoginPanel>
+                <LoginPanel @login_state_changed="setLoginState" v-if="game_state == 'logged_out'"></LoginPanel>
                 <GamesList
                     @start_new="startNew"
                     @game_selected="getGameById"
@@ -19,7 +19,7 @@
                 :units="game_info.units"
                 :board_data="game_info.board"
                 :hero="game_info.hero"
-                v-if="game_state === 'game_loaded'"
+                v-if="game_state == 'game_loaded'"
                 class="col-10 px-0"
                 @game_action="requestAction"
                 @close_game="closeGame"
@@ -80,7 +80,12 @@
                 })
             },
             startNew() {
-                this.$http.get(localStorage.getItem('endpoint') + '/games/', {
+                let data = {
+                    'hero': {
+                        'name': 'Saturo'
+                    }
+                }
+                this.$http.post(localStorage.getItem('endpoint') + '/games/', data, {
                     headers: {
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }

@@ -48,7 +48,8 @@ class GameViewSet(viewsets.ViewSet):
 
     def create(self, request):
         """Create new game for current user"""
-        game_instance = self.gm.new_game(request.data.user_id, request.data.hero)
+        game_instance = self.gm.new_game(request.user, request.data['hero'])
+        game_instance.init_round()
         serializer = GameInstanceSerializer(game_instance)
         return Response(serializer.data)
 
@@ -61,6 +62,7 @@ class GameViewSet(viewsets.ViewSet):
 
     def destroy(self, request, pk=None):
         """Delete game by given id"""
+        print(f'deleting game {pk}')
         deleted = self.gm.delete_game(str(pk))
         return Response({'deleted': deleted})
 
