@@ -1,7 +1,23 @@
 <template>
     <b-list-group class="align-items-center justify-content-start">
         <b-card-title>Games list</b-card-title>
-        <b-list-group-item id="start-new-button" href="#" class="flex-column">Start new</b-list-group-item>
+        <b-list-group-item id="start-new-button" href="#" variant="success" class="flex-column">Start new</b-list-group-item>
+        <b-list-group-item href="#"
+            variant="secondary"
+            class="flex-column"
+            v-for="game in games"
+            v-on:mouseover="gameDetails(game.game_id, true)"
+            v-on:mouseout="gameDetails(game.game_id, false)"
+        >
+            <h5 class="mb-1 ">Hero: {{ game.hero_name }}</h5>
+            <div v-bind:id="'game_details_' + game.game_id" style="display: none">
+                <small>Created: {{ game.created }}</small>
+                <b-badge variant="secondary">Round: {{ game.round }}</b-badge>
+                <b-badge href="#" variant="success" pill v-on:click="gameSelected(game.game_id)">Play</b-badge>
+                <b-badge href="#" variant="danger" pill v-on:click="deleteGame(game.game_id)">Delete</b-badge>
+            </div>
+        </b-list-group-item>
+
         <b-popover
             target="start-new-button"
             triggers="click"
@@ -25,20 +41,6 @@
                 </div>
             </div>
         </b-popover>
-        <b-list-group-item href="#"
-            class="flex-column"
-            v-for="game in games"
-            v-on:mouseover="gameDetails(game.game_id, true)"
-            v-on:mouseout="gameDetails(game.game_id, false)"
-        >
-            <h5 class="mb-1 ">Hero: {{ game.hero_name }}</h5>
-            <div v-bind:id="'game_details_' + game.game_id" style="display: none">
-                <small>Created: {{ game.created }}</small>
-                <b-badge variant="secondary">Round: {{ game.round }}</b-badge>
-                <b-badge href="#" variant="success" pill v-on:click="gameSelected(game.game_id)">Play</b-badge>
-                <b-badge href="#" variant="danger" pill v-on:click="deleteGame(game.game_id)">Delete</b-badge>
-            </div>
-        </b-list-group-item>
     </b-list-group>
 </template>
 
