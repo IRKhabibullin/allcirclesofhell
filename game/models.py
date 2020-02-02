@@ -99,7 +99,7 @@ class Hero(BaseUnit):
     name = models.CharField(max_length=50)
     weapon = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_weapon', null=True, blank=True)
     suit = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_suit', null=True, blank=True)
-    img_path = models.TextField(default='./src/assets/hero.jpeg')
+    img_path = models.TextField(default='./src/assets/board_hero_sized.png')
     # school = models.IntegerField(default=0) it must be enum field
 
     def __str__(self):

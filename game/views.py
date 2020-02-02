@@ -10,30 +10,22 @@ from .mechanics.game_manager import GameManager
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """
-    Viewset for users
-    """
+    """Viewset for users"""
     permission_classes = (IsAuthenticated,)
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
 
 class GameViewSet(viewsets.ViewSet):
-    """
-    Viewset for managing game instances
-    """
+    """Viewset for managing game instances"""
     permission_classes = (IsAuthenticated,)
     gm = GameManager.instance()
     serializer_class = GameInstanceSerializer
 
     @action(detail=False)
     def list_by_user(self, request):
-        """
-        List games, created by current user.
-        Pass auth token to query's header to define required user
-        :param request:
-        :return:
-        """
+        """List games, created by current user.
+        Pass auth token to query's header to define required user"""
         user_games = self.gm.get_games_by_user(request.user)
         games_info = [{
             'game_id': _game.pk,
@@ -46,11 +38,7 @@ class GameViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def close_game(self, request, pk=None):
-        """
-        Removes initialized game_instance from game_manager
-        :param request:
-        :return:
-        """
+        """Removes initialized game_instance from game_manager"""
         # need to pass not game_id but uuid. It removes bug, when same game initialized in two browser tabs
         # also need to handle case when browser tab is closed
         removed = str(request.data['game_id']) in self.gm.game_instances
@@ -59,21 +47,24 @@ class GameViewSet(viewsets.ViewSet):
         return Response({'removed': removed})
 
     def create(self, request):
-        """
-        Create new game for current user
-        """
-        game_instance = self.gm.new_game(request.data.user_id)
+        """Create new game for current user"""
+        game_instance = self.gm.new_game(request.user, request.data['hero'])
+        game_instance.init_round()
         serializer = GameInstanceSerializer(game_instance)
         return Response(serializer.data)
 
     def retrieve(self, request, pk=None):
-        """
-        Get game with given id
-        """
+        """Get game by given id"""
         game_instance = self.gm.get_game(str(pk))
         game_instance.init_round()
         serializer = GameInstanceSerializer(game_instance)
         return Response(serializer.data)
+
+    def destroy(self, request, pk=None):
+        """Delete game by given id"""
+        print(f'deleting game {pk}')
+        deleted = self.gm.delete_game(str(pk))
+        return Response({'deleted': deleted})
 
 
 class GameAction(APIView):

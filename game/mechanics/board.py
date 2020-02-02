@@ -1,6 +1,6 @@
 from random import random
 
-from game.mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit, ocpHero
+from game.mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit, ocpHero, BOARD_RADIUS
 from game.models import Unit, Hero
 
 # chances in percents
@@ -44,7 +44,7 @@ class Board:
         (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
     ]
 
-    def __init__(self, radius: int, hexes: dict = None):
+    def __init__(self, radius: int = None, hexes: dict = None):
 
         def create_neighbors(_hex: Hex):
             """
@@ -59,7 +59,7 @@ class Board:
                 if self.add(new_hex):
                     create_neighbors(new_hex)
 
-        self.radius = radius
+        self.radius = radius or BOARD_RADIUS
         self.__hexes = {}
         if not hexes:
             # todo write algorithms for obstacles generating
