@@ -1,6 +1,6 @@
 from rest_framework.fields import DictField, ListField
 
-from game.models import Hero, Item, GameModel, Unit, Spell
+from game.models import Hero, Item, GameModel, Unit, Spell, GameStructure
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
@@ -64,13 +64,24 @@ class UnitSerializer(serializers.HyperlinkedModelSerializer):
         return f'{unit.position.q};{unit.position.r}'
 
 
+class StructureSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = GameStructure
+        fields = ['pk', 'name', 'code_name', 'position', 'img_path']
+
+    position = serializers.SerializerMethodField('structure_position')
+
+    def structure_position(self, structure):
+        return f'{structure.position.q};{structure.position.r}'
+
+
 class GameInstanceSerializer(serializers.Serializer):
+    game_id = serializers.SerializerMethodField('game_pk')
     board = serializers.SerializerMethodField('game_board')
     round = serializers.SerializerMethodField('game_round')
     hero = HeroSerializer()
-    game_id = serializers.SerializerMethodField('game_pk')
-    # game = GameSerializer(read_only=True)
     units = DictField(child=UnitSerializer())
+    structures = DictField(child=StructureSerializer())
 
     def game_board(self, game):
         return game.board.get_state()

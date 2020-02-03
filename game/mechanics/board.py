@@ -1,7 +1,7 @@
 from random import random
 
-from game.mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit, ocpHero, BOARD_RADIUS
-from game.models import Unit, Hero
+from game.mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit, ocpHero, ocpStructure, BOARD_RADIUS
+from game.models import Unit, Hero, GameStructure
 
 # chances in percents
 OBSTACLE_CHANCE = 15
@@ -147,6 +147,9 @@ class Board:
                 return
             if isinstance(game_object, Hero):
                 game_object.position.occupied_by = ocpHero
+                return
+            if isinstance(game_object, GameStructure):
+                game_object.position.occupied_by = ocpStructure
                 return
             self[position].occupied_by = game_object.pk
 

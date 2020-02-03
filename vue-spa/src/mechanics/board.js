@@ -1,4 +1,4 @@
-import {Hero, Unit} from './game_objects';
+import {Hero, Unit, Structure} from './game_objects';
 import HexGrid from './grid';
 import ActionManager from './actions';
 
@@ -14,13 +14,17 @@ class Board {
     /**
     * Class to work with game board
     */
-    constructor(component, svg_field, board_data, units, hero_data) {
+    constructor(component, svg_field, board_data, units, structures, hero_data) {
         this.component = component;
         this.svg = svg_field;
         this.grid = new HexGrid(this, board_data.radius, board_data.hexes);
 
         this.hero = new Hero(this, hero_data);
         this.units = {};
+        this.structures = {};
+        for (var structure_id in structures) {
+            this.structures[structure_id] = new Structure(this, structures[structure_id]);
+        }
         for (var unit_id in units) {
             this.units[unit_id] = new Unit(this, units[unit_id]);
         }

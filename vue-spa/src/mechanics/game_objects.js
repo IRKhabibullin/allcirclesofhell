@@ -219,4 +219,29 @@ class Unit extends BaseUnit {
     }
 };
 
-export {Hero, Unit, colors};
+
+class Structure {
+    constructor(board, structureData) {
+        this.board = board;
+
+        this.name = structureData.name;
+        this.code_name = structureData.code_name;
+        this.img_path = structureData.img_path;
+        this.hex = board.grid.hexes[structureData.position];
+        this.image = this.board.svg.image(this.img_path, 55, 55);
+        let structure_coords = this.hex.toPoint();
+        this.image.move(structure_coords.x, structure_coords.y);
+
+        this.clickTargetHandler = null;
+
+        this.image.on('click', this.clickHandler, this);
+    }
+
+    clickHandler(event) {
+        if (!!this.clickTargetHandler) {
+            this.clickTargetHandler(this.hex);
+        }
+    }
+};
+
+export {Hero, Unit, colors, Structure};

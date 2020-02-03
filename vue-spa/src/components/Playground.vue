@@ -68,7 +68,8 @@
         props: {
             board_data: null,
             units: null,
-            hero: null
+            hero: null,
+            structures: null
         },
         data() {
             return {
@@ -82,7 +83,7 @@
         },
         mounted() {
             const svg_container = SVG(document.getElementById('drawing'));
-            this.board = new Board(this, svg_container, this.board_data, this.units, this.hero);
+            this.board = new Board(this, svg_container, this.board_data, this.units, this.structures, this.hero);
             window.addEventListener('keydown', this.keydownHandler);
             window.addEventListener('keyup', this.keyupHandler);
         },

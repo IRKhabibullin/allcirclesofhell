@@ -3,7 +3,8 @@ import math
 from random import shuffle
 
 from game.mechanics.actions import ActionManager, ActionNotAllowedError
-from game.models import User, GameModel, Unit, Hero, Item
+from game.mechanics.game_sturctures import StructuresManager
+from game.models import User, GameModel, Unit, Hero, Item, GameStructure
 from game.mechanics.board import Board
 from game.mechanics.constants import ocpHero, ocpEmpty, ocpUnit
 
@@ -19,6 +20,10 @@ class GameInstance:
         self._game = game_model
         game_state = json.loads(self._game.state)
         self.board = Board(**game_state.get('board', {}))
+
+        # round-wise game objects
+        self.units = {}
+        self.structures = []
 
     @classmethod
     def new(cls, user: User, hero: dict):
@@ -40,10 +45,6 @@ class GameInstance:
     def hero(self):
         return self._game.hero
 
-    @property
-    def units(self):
-        return self._game.units
-
     def init_round(self):
         """
         Initializing round
@@ -51,7 +52,8 @@ class GameInstance:
         Setting hero position
         Counting and placing units
         """
-        self._game.units = {}
+        self.units = {}
+        self.structures = {}
         self.board.clear_board()
         self.board.place_game_object(self.hero, f'0;{self.board.radius // 2}')
 
@@ -62,24 +64,31 @@ class GameInstance:
         available_hexes = list(available_hexes - hexes_in_range.keys())
         shuffle(available_hexes)
 
-        def place_units(points: int, unit_level: int):
+        def place_structures():
+            for structure in GameStructure.objects.all():
+                if self._game.round % structure.round_frequency == 0:
+                    StructuresManager.build(self, structure)
+                    self.structures[structure.pk] = structure
+
+        def place_units(points: int, unit_cost: int):
             """
-            Counting units of current level and placing them on board.
-            About half of remaining points goes to current level of units if its not 1 level unit
-            Recursive call for units of lower level
+            Counting units of current <unit_cost> and placing them on board.
+            About half of <points> goes to units of current <unit_cost> if unit_cost != 1
+            Recursive call for units of lower cost
             """
-            u_count = points if unit_level == 1 else round((points // 2) / unit_level)
+            u_count = points if unit_cost == 1 else round((points // 2) / unit_cost)
             for i in range(u_count):
-                unit = Unit.objects.get(level=unit_level)
+                unit = Unit.objects.get(level=unit_cost)
                 unit.pk = len(self.units)
                 self.board.place_game_object(unit, available_hexes.pop())
                 self.units[unit.pk] = unit
-            points_remain = int(points - u_count * unit_level)
+            points_remain = int(points - u_count * unit_cost)
             if points_remain:
-                place_units(points_remain, unit_level // 2)
+                place_units(points_remain, unit_cost // 2)
 
-        max_unit_level = int(math.pow(2, math.floor(math.log2(self._game.round / 2)))) or 1
-        place_units(self._game.round, max_unit_level)
+        max_unit_cost = int(math.pow(2, math.floor(math.log2(self._game.round / 2)))) or 1
+        place_structures()
+        place_units(self._game.round, max_unit_cost)
         self.update_moves()
 
     def update_moves(self):

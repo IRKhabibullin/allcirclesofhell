@@ -45,6 +45,16 @@ class Item(HandbookModel):
     img_path = models.TextField(default='./src/assets/item.jpeg')
 
 
+class ItemEffect(models.Model):
+    """Intermediary table to bind spells and effects"""
+    item = models.ForeignKey(Item, on_delete=models.CASCADE)
+    effect = models.ForeignKey(Effect, on_delete=models.CASCADE)
+    value = models.FloatField(default=0.0)
+
+    def __str__(self):
+        return f'{self.item.code_name}.{self.effect.code_name}'
+
+
 class Spell(HandbookModel):
     """Table listing all spells available in game"""
     cost = models.IntegerField()
@@ -62,6 +72,14 @@ class SpellEffect(models.Model):
 
     def __str__(self):
         return f'{self.spell.code_name}.{self.effect.code_name}'
+
+
+class GameStructure(HandbookModel):
+    """Table listing game structures"""
+    img_path = models.TextField(default='./src/assets/building.png')
+    round_frequency = models.IntegerField(default=1)  # structure will appear every <round_frequency> rounds
+    position = None
+    assortment = []
 
 
 class BaseUnit(models.Model):
@@ -114,8 +132,6 @@ class GameModel(models.Model):
     round = models.IntegerField(default=1)  # round in the game
     # jsoned state of game. Need to save board state, shops assortment and so on
     state = models.TextField(default='{}')
-
-    units = {}
 
     # def save_state(self):
 

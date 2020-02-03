@@ -19,6 +19,9 @@ class ActionManager {
                     for (var hex_id in this.board.grid.hexes) {
                         this.board.grid.hexes[hex_id].clickHandler = this.actions.move.hexClickHandler;
                     }
+                    for (var structure_id in this.board.structures) {
+                        this.board.structures[structure_id].clickTargetHandler = this.actions.move.hexClickHandler;
+                    }
                     for (var unit_id in this.board.units) {
                         this.board.units[unit_id].clickTargetHandler = this.actions.move.unitClickHandler;
                     }
