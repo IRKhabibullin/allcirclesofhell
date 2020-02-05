@@ -20,7 +20,7 @@ class ActionManager {
                         this.board.grid.hexes[hex_id].clickHandler = this.actions.move.hexClickHandler;
                     }
                     for (var structure_id in this.board.structures) {
-                        this.board.structures[structure_id].clickTargetHandler = this.actions.move.hexClickHandler;
+                        this.board.structures[structure_id].clickTargetHandler = this.actions.move.structureClickHandler;
                     }
                     for (var unit_id in this.board.units) {
                         this.board.units[unit_id].clickTargetHandler = this.actions.move.unitClickHandler;
@@ -65,6 +65,18 @@ class ActionManager {
                         this.board.component.requestAction({'action': 'range_attack', 'target_unit': unit.pk});
                     } else {
                         this.actions.move.goLongPath(unit.hex);
+                    }
+                },
+                structureClickHandler: structure => {
+                    if (this.currentAction != 'move') {
+                        this.changeAction('move');
+                    }
+                    if (this.board.grid.distance(structure.hex, this.board.hero.hex) <= this.board.hero.move_range) {
+                        this.actions.move.resetPath();
+                        this.board.component.requestAction({'action': 'enter_structure',
+                                                            'target': structure.code_name});
+                    } else {
+                        this.actions.move.goLongPath(structure.hex);
                     }
                 },
                 goLongPath: hex => {

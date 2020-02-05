@@ -23,7 +23,7 @@ class GameInstance:
 
         # round-wise game objects
         self.units = {}
-        self.structures = []
+        self.structures = {}
 
     @classmethod
     def new(cls, user: User, hero: dict):
@@ -68,7 +68,7 @@ class GameInstance:
             for structure in GameStructure.objects.all():
                 if self._game.round % structure.round_frequency == 0:
                     StructuresManager.build(self, structure)
-                    self.structures[structure.pk] = structure
+                    self.structures[structure.code_name] = structure
 
         def place_units(points: int, unit_cost: int):
             """
@@ -91,6 +91,10 @@ class GameInstance:
         place_units(self._game.round, max_unit_cost)
         self.update_moves()
 
+    def exit_round(self):
+        self._game.round += 1
+        self.init_round()
+
     def update_moves(self):
         self.hero.moves = list(
             self.board.get_hexes_in_range(self.hero.position, self.hero.move_range, [ocpEmpty]).keys())
@@ -105,12 +109,8 @@ class GameInstance:
         """
         Make hero action
         """
-        action_data['allowed'] = False
-        try:
-            action_result = ActionManager.execute(self, action_data)
-        except ActionNotAllowedError:
-            action_result = {'allowed': False}
-        else:
+        action_result = ActionManager.execute(self, action_data)
+        if action_result['allowed']:
             # update hero's and units' possible moves
             action_result['units_actions'] = self.units_action(except_list=action_result.pop('stunned_units', []))
             self.update_moves()

@@ -2,7 +2,7 @@
 Functions for actions
 """
 from game.models import Spell
-from game.mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit
+from game.mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit, ocpStructure
 
 
 class ActionNotAllowedError(Exception):
@@ -169,6 +169,20 @@ class Blink(SpellAction):
         return {}
 
 
+class ExitRound:
+    def __init__(self, game, action_data):
+        self.game = game
+        self.target = self.game.structures[action_data.get('target')]
+        if not self.target:
+            raise ActionNotAllowedError
+        if self.game.board.distance(self.target.position, self.game.hero.position) > self.game.hero.move_range:
+            raise ActionNotAllowedError
+
+    def execute(self):
+        self.game.exit_round()
+        return {}
+
+
 class ActionManager:
     """Class to manage all actions"""
     _actions_mapping = {
@@ -178,9 +192,16 @@ class ActionManager:
         'path_of_fire': PathOfFire,
         'shield_bash': ShieldBash,
         'blink': Blink,
+        'enter_structure': ExitRound
     }
 
     @staticmethod
     def execute(game, action_data):
         """Executes action and returns results"""
-        return {'allowed': True, **ActionManager._actions_mapping[action_data['action']](game, action_data).execute()}
+        result = {'allowed': True}
+        try:
+            action_result = ActionManager._actions_mapping[action_data['action']](game, action_data).execute()
+            result.update(action_result)
+        except ActionNotAllowedError:
+            result['allowed'] = False
+        return result

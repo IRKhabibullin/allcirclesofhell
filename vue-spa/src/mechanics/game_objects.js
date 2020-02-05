@@ -239,7 +239,7 @@ class Structure {
 
     clickHandler(event) {
         if (!!this.clickTargetHandler) {
-            this.clickTargetHandler(this.hex);
+            this.clickTargetHandler(this);
         }
     }
 };
