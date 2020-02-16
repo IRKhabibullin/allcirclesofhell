@@ -35,31 +35,44 @@ class Board {
 
     handleAction(actionData) {
         console.log('actionData', actionData);
-        if (actionData.action_data.allowed) {
+        if (actionData.action_data.state != 'success') {
+            this.actionManager.changeAction('move');
+        } else {
             this.grid.update_hexes(actionData.board.hexes);
             this.actionManager.handleAction(actionData.action_data);
             this.actionManager.changeAction('move');
-            this.hero.update(actionData.hero, actionData.action_data);
-            this.update_units(actionData.units, actionData.units_actions);
+            this.hero.update(actionData.hero, actionData.action_data.hero_data);
+            this.update_units(actionData.units, actionData.action_data.units_data);
         }
     }
 
-    update_units(new_units, units_actions) {
+    update_units(new_units, units_data) {
         let units_to_add = Object.keys(new_units).filter(u => !(u in this.units));
         let units_to_update = Object.keys(this.units).filter(u => u in new_units);
         let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
 
-        units_to_update.forEach(unit_id => {
-            this.units[unit_id].update(new_units[unit_id], {'action': new_units[unit_id].action,
-                                                            'damage': new_units[unit_id].damage_dealt});
-        });
         units_to_remove.forEach(unit_id => {
             this.units[unit_id].image.remove();
             delete this.units[unit_id];
         });
         units_to_add.forEach(unit_id => {
             this.units[unit_id] = new Unit(this, new_units[unit_id]);
-        })
+        });
+        units_to_update.forEach(unit_id => {
+            this.units[unit_id].update(new_units[unit_id], units_data[unit_id]);
+        });
+    }
+
+    getUnitByHex(_hex) {
+        if (this.hero.hex == _hex) {
+            return this.hero;
+        }
+        for (var unit_id in this.units) {
+            let unit = this.units[unit_id];
+            if (unit.hex == _hex) {
+                return unit;
+            }
+        };
     }
 
     showMoves() {

@@ -4,9 +4,9 @@ from unittest import TestCase
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from game.mechanics.constants import ocpUnit
+from game.mechanics.constants import slotUnit
 from game.mechanics.game_instance import GameInstance
-from game.models import Hero, GameModel
+from game.models import HeroModel, GameModel
 
 
 class GameInstanceTestCase(TestCase):
@@ -22,7 +22,7 @@ class GameInstanceTestCase(TestCase):
     def test_init_round(self):
         self.game.init_round()
         self.assertEqual(self.game.hero.position.id, '0;3')
-        self.assertDictEqual(self.game.board.get_hexes_in_range(self.game.hero.position, 3, [ocpUnit]), {})
+        self.assertDictEqual(self.game.board.get_hexes_in_range(self.game.hero.position, 3, allowed=[slotUnit]), {})
         self.assertEqual(sum([unit.level for unit in self.game.units.values()]), self.game._game.round)
 
     def test_new(self):

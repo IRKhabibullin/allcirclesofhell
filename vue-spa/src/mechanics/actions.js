@@ -3,10 +3,6 @@ import anime from 'animejs'
 class ActionManager {
     constructor(board) {
         this.board = board;
-//        this.actionParams = {
-////        some values, passed in constructor, for example
-//            'length_of_path_of_fire': 4
-//        }
         this.currentAction = null;
         this.actionData = {};
         this.animation_elements = this.board.svg.group();
@@ -57,9 +53,9 @@ class ActionManager {
                 },
                 unitClickHandler: unit => {
                     if (this.board.grid.distance(unit.hex, this.board.hero.hex) <= this.board.hero.attack_range) {
-                        this.board.component.requestAction({'action': 'attack', 'target_unit': unit.pk});
+                        this.board.component.requestAction({'action': 'attack', 'target_hex': unit.hex.q + ';' + unit.hex.r});
                     } else if (this.board.grid.distance(unit.hex, this.board.hero.hex) <= this.board.hero.attack_range + 1) {
-                        this.board.component.requestAction({'action': 'range_attack', 'target_unit': unit.pk});
+                        this.board.component.requestAction({'action': 'range_attack', 'target_hex': unit.hex.q + ';' + unit.hex.r});
                     } else {
                         this.actions.move.goLongPath(unit.hex);
                     }
@@ -137,7 +133,7 @@ class ActionManager {
                     for (var i = 1; i < this.board.hero.spells[this.currentAction].path_length + 1; i++) {
                         let current_hex = this.board.grid.getHexByCoords(this.board.hero.hex.q + dq * i,
                                                                          this.board.hero.hex.r + dr * i);
-                        if (current_hex === undefined || current_hex.occupied_by == 'obstacle')
+                        if (current_hex === undefined || current_hex.slot == 'obstacle')
                             break;
                         this.actionData.path.push(current_hex);
                         current_hex.polygon.classList.add('secondaryTarget');

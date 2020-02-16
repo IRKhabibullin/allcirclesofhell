@@ -36,12 +36,12 @@ class Hex {
     constructor(hex_data, board) {
         this.q = hex_data.q;
         this.r = hex_data.r;
-        this.x = hex_data.x;
-        this.y = hex_data.y;
-        this.z = hex_data.z;
-        this.occupied_by = hex_data.occupied_by;
+        this.x = hex_data.q;
+        this.z = hex_data.r;
+        this.y = -this.q - this.r;
+        this.slot = hex_data.slot;
         this.polygon = null;
-        this.image = this.getBackground(this.occupied_by, board);
+        this.image = this.getBackground(this.slot, board);
         let coords = this.toPoint();
         this.damage_indicator = board.svg.text('0')
             .font({'fill': 'red', 'size': 18, 'opacity': 0})
@@ -127,7 +127,7 @@ class HexGrid {
             let {x, y} = hex.toPoint();
             let _polygon = this.tiles.polygon(corners)
                 .attr('id', hex_id)
-                .attr('class', hex.occupied_by !== 'empty' ? 'obstacle_hex' : 'hex')
+                .attr('class', hex.slot != 'empty' ? 'obstacle_hex' : 'hex')
                 .attr('fill', hex.image)
                 .on('mouseover', hex.mouseoverHandler, hex)
                 .on('mouseout', hex.mouseoutHandler, hex)
@@ -175,11 +175,10 @@ class HexGrid {
         return neighbors;
     }
 
-    getHexesInRange(hex, _range, occupied_by) {
+    getHexesInRange(hex, _range, allowed_slots) {
         /**
         * Get list of hex ids in <_range> away from <center_hex>. Center hex itself doesn't count in range
-        * Can specify allowed hex occupation.
-        * Hexes, occupied by object of type that NOT in <occupied_by>, not included in result
+        * Can specify allowed hex occupation
         * todo probably need to return object instead of list. It this function is needed at all
         */
         var hexes_in_range = [];
@@ -187,7 +186,7 @@ class HexGrid {
             for (var r = Math.max(-_range, -q - _range); r < Math.min(_range, -q + _range) + 1; r++) {
                 let hex_id = (q + hex.q) + ';' + (r + hex.r);
                 if (!!this.hexes[hex_id]) {
-                    if (!occupied_by || occupied_by.includes(this.hexes[hex_id].occupied_by)) {
+                    if (!allowed_slots || allowed_slots.includes(this.hexes[hex_id].slot)) {
                         hexes_in_range.push(hex_id);
                     }
                 }
@@ -222,9 +221,9 @@ class HexGrid {
             }
             var neighbors = this.getNeighbors(current);
             neighbors.forEach(next => {
-                if (next.occupied_by != 'empty') {
+                if (next.slot != 'empty') {
                     // fixme for now only units have ids in hexes as numbers. But need to fix it later maybe
-                    if (!(next.occupied_by == 'unit' && next == target_hex)) {
+                    if (!(next.slot == 'unit' && next == target_hex)) {
                         return;
                     }
                 }
@@ -254,14 +253,14 @@ class HexGrid {
         for (var hex_id in hexes) {
             let _hex = hexes[hex_id];
             let current_hex = this.hexes[hex_id];
-            if (current_hex.occupied_by != _hex.occupied_by) {
-                let class_to_remove = current_hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
-                let class_to_add = _hex.occupied_by == 'empty' ? 'hex' : 'obstacle_hex';
+            if (current_hex.slot != _hex.slot) {
+                let class_to_remove = current_hex.slot == 'empty' ? 'hex' : 'obstacle_hex';
+                let class_to_add = _hex.slot == 'empty' ? 'hex' : 'obstacle_hex';
                 if (class_to_add != class_to_remove) {
                     current_hex.polygon.classList.remove(class_to_remove);
                     current_hex.polygon.classList.add(class_to_add);
                 }
-                current_hex.occupied_by = _hex.occupied_by;
+                current_hex.slot = _hex.slot;
             }
         }
     }

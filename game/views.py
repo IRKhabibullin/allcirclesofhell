@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from game.serializers import UserSerializer, GameInstanceSerializer
+from .mechanics.actions import ActionResponse
 from .mechanics.game_manager import GameManager
 
 
@@ -78,15 +79,15 @@ class GameAction(APIView):
         """
         Handle actions
         """
-        response_data = {}
         print('request data', request.data)
         game_instance = self.gm.get_game(str(request.data['game_id']))
-        action_data = {'action': request.data['action'], **game_instance.hero_action(request.data)}
-        if action_data['allowed']:
-            response_data = GameInstanceSerializer(game_instance).data
-            units_actions = action_data.pop('units_actions', [])
-            for u_action in units_actions:
-                response_data['units'][u_action['source']]['action'] = 'attack'
-                response_data['units'][u_action['source']]['damage_dealt'] = u_action['damage_dealt']
-        response_data['action_data'] = action_data
+        action_response: ActionResponse = game_instance.make_turn(request.data)
+        # action_data = {'action': request.data['action'], **game_instance.hero_action(request.data)}
+        # if action_data['allowed']:
+        #     response_data = GameInstanceSerializer(game_instance).data
+        #     units_actions = action_data.pop('units_actions', [])
+        #     for u_action in units_actions:
+        #         response_data['units'][u_action['source']]['action'] = 'attack'
+        #         response_data['units'][u_action['source']]['damage_dealt'] = u_action['damage_dealt']
+        response_data = {**GameInstanceSerializer(game_instance).data, 'action_data': action_response.to_dict()}
         return Response(response_data)

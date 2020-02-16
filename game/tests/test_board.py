@@ -1,7 +1,8 @@
 from unittest import TestCase
 from random import random
 from ..mechanics.board import Board, Hex
-from ..mechanics.constants import ocpEmpty, ocpObstacle, ocpUnit
+from ..mechanics.constants import slotEmpty, slotObstacle, slotUnit
+from ..mechanics.game_objects import Obstacle
 
 
 class BoardTestCase(TestCase):
@@ -14,10 +15,10 @@ class BoardTestCase(TestCase):
 
     def test_add(self):
         q, r = 2, 3
-        self.board.get(f'{q};{r}').occupied_by = ocpObstacle
-        test_hex = Hex(q, r, ocpUnit)
+        self.board.get(f'{q};{r}').slot = Obstacle()
+        test_hex = Hex(q, r, slotUnit)
         self.board.add(test_hex)
-        self.assertEqual(self.board.get(f'{q};{r}').occupied_by, ocpUnit)
+        self.assertEqual(self.board.get(f'{q};{r}').slot, slotUnit)
 
     def test_get_neighbors(self):
         if self.board.radius > 1:
@@ -52,18 +53,6 @@ class BoardTestCase(TestCase):
                 for _bias in side_biases:
                     self.assertIn(self.board.get(f"{side_hex.q + _bias[0]};{side_hex.r + _bias[1]}"), neighbors)
 
-    def test_clear_board(self):
-        test_hex = None
-        while not test_hex:
-            _coordinates = (int(random() * 2 * self.board.radius - self.board.radius),
-                            int(random() * 2 * self.board.radius - self.board.radius))
-            _coordinates = f'{_coordinates[0]};{_coordinates[1]}'
-            if _coordinates in self.board and self.board[_coordinates].occupied_by == ocpEmpty:
-                test_hex = self.board[_coordinates]
-        test_hex.occupied_by = 'testing value'
-        self.board.clear_board()
-        self.assertIn(test_hex.occupied_by, [ocpEmpty, ocpObstacle])
-
     def test_place_object(self):
         test_pk = 'test_pk'
         test_position = '3;-3'
@@ -76,7 +65,27 @@ class BoardTestCase(TestCase):
 
         test_object = GameObject()
         self.board.place_game_object(test_object, test_position)
-        self.assertEqual(self.board[test_position].occupied_by, test_pk)
+        self.assertEqual(self.board[test_position].slot.pk, test_pk)
+
+    def test_clear_board(self):
+
+        class GameObject:
+            """Game object imitation for tests"""
+            def __init__(self):
+                self.pk = 'test_pk'
+                self.position = None
+
+        test_hex = None
+        while not test_hex:
+            _coordinates = (int(random() * 2 * self.board.radius - self.board.radius),
+                            int(random() * 2 * self.board.radius - self.board.radius))
+            _coordinates = f'{_coordinates[0]};{_coordinates[1]}'
+            if _coordinates in self.board and self.board[_coordinates].slot == slotEmpty:
+                test_hex = self.board[_coordinates]
+
+        self.board.place_game_object(GameObject(), test_hex.id)
+        self.board.clear_board()
+        self.assertIn(test_hex.slot, [slotEmpty])
 
     def test_get_hexes_in_range(self):
         hex_ranges = [

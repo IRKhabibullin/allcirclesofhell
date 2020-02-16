@@ -1,12 +1,12 @@
 from django.contrib import admin
-from .models import Hero, Item, Spell, Effect, Skill, GameModel, Unit, SpellEffect
+from .models import HeroModel, ItemModel, SpellModel, EffectModel, SkillModel, GameModel, UnitModel, SpellEffectModel
 
 
 admin.site.register(GameModel)
-admin.site.register(Hero)
-admin.site.register(Item)
-admin.site.register(Spell)
-admin.site.register(SpellEffect)
-admin.site.register(Effect)
-admin.site.register(Skill)
-admin.site.register(Unit)
+admin.site.register(HeroModel)
+admin.site.register(ItemModel)
+admin.site.register(SpellModel)
+admin.site.register(SpellEffectModel)
+admin.site.register(EffectModel)
+admin.site.register(SkillModel)
+admin.site.register(UnitModel)

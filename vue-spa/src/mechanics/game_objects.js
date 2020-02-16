@@ -51,17 +51,20 @@ class BaseUnit {
     }
 
     // animations
-    attack(target, damage) {
+    attack(target_hex, damage) {
         /**
         * Attack animation.
         *    target: BaseUnit
         */
         let source_point = this.hex.toPoint();
-        let target_point = target.hex.toPoint();
+        let target_point = target_hex.toPoint();
         this.image
             .animate(100, '-', this.animation_delay).move(target_point.x, target_point.y)
             .animate(100, '-').move(source_point.x, source_point.y);
-        target.getDamage(damage);
+        let target = this.board.getUnitByHex(target_hex);
+        if (!!target) {
+            target.getDamage(damage);
+        }
     }
 
     getDamage(damage) {
@@ -109,25 +112,25 @@ class Hero extends BaseUnit {
                 this.updateHandler();
             }
             if (actionData['action'] == 'attack') {
-                this.attack(this.board.units[actionData.target], actionData.damage);
+                this.attack(this.board.grid.hexes[actionData.target_hex], actionData.damage);
             } else if (actionData['action'] == 'range_attack') {
-                this.range_attack(this.board.units[actionData.target], actionData.damage);
+                this.range_attack(this.board.grid.hexes[actionData.target_hex], actionData.damage);
             }
         }
     }
 
-    range_attack(target, damage) {
+    range_attack(target_hex, damage) {
         /**
         * Range attack animation.
         *    target: BaseUnit
         */
         let source_point = this.hex.toPoint();
-        let target_point = target.hex.toPoint();
+        let target_point = target_hex.toPoint();
 //        todo move constants like hex_size in separate file and import them from there
         this.range_weapon.move(source_point.x + 30, source_point.y + 30).fill({'opacity': 1})
             .animate(150).fill({'opacity': 0}).move(target_point.x + 30, target_point.y + 30);
-        target.hex.damage_indicator.text(damage.toString());
-        target.hex.damage_indicator
+        target_hex.damage_indicator.text(damage.toString());
+        target_hex.damage_indicator
             .animate(100, '-', this.animation_delay).attr({'opacity': 1})
             .animate(1000).font({'opacity': 0}).translate(0, -30)
             .animate(10).translate(0, 0);
@@ -175,7 +178,7 @@ class Unit extends BaseUnit {
         super.update(unitData, actionData);
         if ('action' in actionData) {
             if (actionData.action == 'attack') {
-                this.attack(this.board.hero, actionData.damage);
+                this.attack(this.board.grid.hexes[actionData.target_hex], actionData.damage);
             }
             if (!!this.updateHandler) {
                 this.updateHandler(this.hex, actionData);
