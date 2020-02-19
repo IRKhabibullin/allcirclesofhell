@@ -33,20 +33,19 @@ class Board {
         this.altPressed = false;
     }
 
-    handleAction(actionData) {
-        console.log('actionData', actionData);
-        if (actionData.action_data.state != 'success') {
+    handleAction(response) {
+        console.log('response', response);
+        if (response.action_data.state != 'success') {
             this.actionManager.changeAction('move');
         } else {
-            this.grid.update_hexes(actionData.board.hexes);
-            this.actionManager.handleAction(actionData.action_data);
+            this.grid.update_hexes(response.board.hexes);
+            this.hero.update(response.hero, response.action_data.hero_actions);
+            this.update_units(response.units, response.action_data.units_actions);
             this.actionManager.changeAction('move');
-            this.hero.update(actionData.hero, actionData.action_data.hero_data);
-            this.update_units(actionData.units, actionData.action_data.units_data);
         }
     }
 
-    update_units(new_units, units_data) {
+    update_units(new_units, units_actions) {
         let units_to_add = Object.keys(new_units).filter(u => !(u in this.units));
         let units_to_update = Object.keys(this.units).filter(u => u in new_units);
         let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
@@ -59,7 +58,7 @@ class Board {
             this.units[unit_id] = new Unit(this, new_units[unit_id]);
         });
         units_to_update.forEach(unit_id => {
-            this.units[unit_id].update(new_units[unit_id], units_data[unit_id]);
+            this.units[unit_id].update(new_units[unit_id], units_actions[unit_id]);
         });
     }
 

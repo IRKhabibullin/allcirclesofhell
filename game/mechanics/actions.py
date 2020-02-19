@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import List, Dict, TYPE_CHECKING
 
 from game.models import SpellModel
-from game.mechanics.constants import slotEmpty, slotObstacle, slotUnit
+from game.mechanics.constants import slotEmpty, slotObstacle
 from game.mechanics.game_objects import Hero, BaseGameObject, BaseUnitObject
 
 if TYPE_CHECKING:
@@ -17,33 +17,29 @@ class ActionResponse:
     def __init__(self, name: str):
         self.name: str = name
         self.state: str = 'success'
-        # additional info about game objects
-        self.hero_data: dict = {}
-        self.units_data: dict = defaultdict(dict)
+        # actions made by units
+        self.hero_actions: Dict[str: list] = {}
+        self.units_actions: Dict[Dict[str: list]] = defaultdict(dict)
 
     def to_dict(self):
-        return {'action': self.name, 'state': self.state, 'hero_data': self.hero_data, 'units_data': self.units_data}
-
-
-class ActionNotAllowedError(Exception):
-    """Exception raised when action could not be executed"""
-    pass
+        return {'action': self.name, 'state': self.state, 'hero_actions': self.hero_actions,
+                'units_actions': self.units_actions}
 
 
 class Action:
     """Base class for all game actions"""
     action_name: str
 
-    def __init__(self, game: 'GameInstance', action_data):
+    def __init__(self, game: 'GameInstance', action_data: dict):
         self.game = game
         self.source: BaseGameObject = action_data['source']
         self.target_hex: str = action_data['target_hex']
 
-    @staticmethod
-    def available_targets(game: 'GameInstance', unit: 'BaseUnitObject'):
-        return False
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject') -> 'List[Hex]':
+        raise NotImplementedError
 
-    def execute(self):
+    def execute(self) -> Dict[str, List]:
         """Main method to execute action"""
         raise NotImplementedError
 
@@ -52,15 +48,17 @@ class SpellAction(Action):
     """Base class for all spell actions"""
     action_name: str
 
-    def __init__(self, game, action_request):
-        super().__init__(game, action_request)
+    def __init__(self, game: 'GameInstance', action_data: dict):
+        if not isinstance(action_data['source'], BaseUnitObject):
+            raise RuntimeError(f'This game object is muggle')
+        super().__init__(game, action_data)
         try:
-            self.spell = self.game.hero.spells.get(code_name=self.action_name)
+            self.spell = self.source.spells.get(code_name=self.action_name)
         except SpellModel.DoesNotExist:
-            raise ActionNotAllowedError
-        self.spell_effects = {item.effect.code_name: item.value for item in self.spell.spelleffect_set.all()}
+            raise RuntimeError('Action not allowed')
+        self.spell_effects = {item.effect.code_name: item.value for item in self.spell.spelleffectmodel_set.all()}
 
-    def execute(self):
+    def execute(self) -> Dict[str, List]:
         raise NotImplementedError
 
 
@@ -73,12 +71,12 @@ class Idle(Action):
             raise RuntimeError(f'This game object can not perform action {self.action_name}')
         super().__init__(game, action_data)
 
-    @staticmethod
-    def available_targets(game: 'GameInstance', unit: 'BaseUnitObject'):
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
         return [unit.position.id]
 
-    def execute(self):
-        pass
+    def execute(self) -> Dict[str, List]:
+        return {}
 
 
 class MoveAction(Action):
@@ -90,12 +88,12 @@ class MoveAction(Action):
             raise RuntimeError(f'This game object can not perform action {self.action_name}')
         super().__init__(game, action_data)
 
-    @staticmethod
-    def available_targets(game: 'GameInstance', unit: 'BaseUnitObject'):
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
         targets = game.get_hexes_in_range(unit.position, unit.move_range, allowed=[slotEmpty])
         return list(targets.values())
 
-    def execute(self):
+    def execute(self) -> Dict[str, List]:
         if self.game.distance(self.source.position, self.target_hex) <= self.source.move_range:
             self.game.move_object(self.source, self.target_hex)
             return {}
@@ -111,15 +109,15 @@ class Attack(Action):
             raise RuntimeError(f'This game object can not perform action {self.action_name}')
         super().__init__(game, action_data)
 
-    @staticmethod
-    def available_targets(game: 'GameInstance', unit: 'BaseUnitObject'):
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
         targets = game.get_hexes_in_range(unit.position, unit.attack_range, allowed=[str(unit.priority_target)])
         return list(targets.values())
 
-    def execute(self):
+    def execute(self) -> Dict[str, List]:
         if self.game.distance(self.source.position, self.target_hex) <= self.source.attack_range:
-            self.game.deal_damage(self.source, self.target_hex, self.source.damage)
-            return {'action': self.action_name, 'target_hex': self.target_hex, 'damage': self.source.damage}
+            self.game.deal_damage(self.target_hex, self.source.damage)
+            return {self.action_name: [{'target_hex': self.target_hex, 'damage': self.source.damage}]}
         raise RuntimeError('Cant attack target. Its too far')
 
 
@@ -132,15 +130,15 @@ class RangeAttack(Action):
             raise RuntimeError(f'This game object can not perform action {self.action_name}')
         super().__init__(game, action_data)
 
-    @staticmethod
-    def available_targets(game: 'GameInstance', unit: 'BaseUnitObject'):
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
         targets = game.get_hexes_in_range(unit.position, unit.attack_range + 1, allowed=[str(unit.priority_target)])
         return list(targets.values())
 
-    def execute(self):
+    def execute(self) -> Dict[str, List]:
         if self.game.distance(self.source.position, self.target_hex) <= self.source.attack_range + 1:
-            self.game.deal_damage(self.source, self.target_hex, self.source.damage)
-            return {'action': self.action_name, 'target_hex': self.target_hex, 'damage': self.source.damage}
+            self.game.deal_damage(self.target_hex, self.source.damage)
+            return {self.action_name: [{'target_hex': self.target_hex, 'damage': self.source.damage}]}
         raise RuntimeError('Cant attack target. Its too far')
     
 
@@ -148,36 +146,35 @@ class PathOfFire(SpellAction):
     """Path of fire spell"""
     action_name = 'path_of_fire'
 
-    def __init__(self, game, action_request):
-        super().__init__(game, action_request)
-        if self.game.board.distance(self.game.hero.position, self.target_hex) > self.spell_effects['radius']:
-            raise ActionNotAllowedError
+    def __init__(self, game, action_data):
+        super().__init__(game, action_data)
 
-    def execute(self):
-        source = self.game.get_object_by_position(self.request.source)
-        if self.game.distance(source.position, self.request.target_hex) <= source.spells:
-            pass
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject') -> 'List[Hex]':
+        try:
+            spell = unit.spells.get(code_name=PathOfFire.action_name)
+        except SpellModel.DoesNotExist:
+            raise RuntimeError('Action not allowed')
+        spell_effects = {item.effect.code_name: item.value for item in spell.spelleffectmodel_set.all()}
+        targets = game.get_hexes_in_range(unit.position, spell_effects['radius'], restricted=[slotObstacle]).values()
+        targets = [_hex for _hex in targets if unit.position != _hex]
+        return targets
 
-        action_result = {}
-        hero_hex = self.game.hero.position
-        dq, dr = self.target_hex.q - hero_hex.q, self.target_hex.r - hero_hex.r
-        target_hexes, target_units = [], []
-        for i in range(1, int(self.spell_effects['path_length']) + 1):
-            hex_id = f"{hero_hex.q + dq * i};{hero_hex.r + dr * i}"
-            _hex = self.game.board[hex_id]
-            # we build path of fire for path length or until meet an obstacle
-            if not _hex or _hex.occupied_by == slotObstacle:
+    def execute(self) -> Dict[str, List]:
+        if self.game.distance(self.source.position, self.target_hex) > self.spell_effects['radius']:
+            raise RuntimeError('Target is too far')
+
+        action_steps: list = []
+        print('target hex', self.target_hex)
+        q, r = map(int, self.target_hex.split(';'))
+        dq, dr = q - self.source.position.q, r - self.source.position.r
+        for i in range(int(self.spell_effects['path_length'])):
+            hex_id = f"{q + dq * i};{r + dr * i}"
+            if str(self.game.get_object_by_position(hex_id)) == slotObstacle:
                 break
-            target_hexes.append(hex_id)
-            if _hex.occupied_by == slotUnit:
-                target_units.append(_hex)
-        target_units = {_unit.pk: {} for _unit in self.game.units.values() if _unit.position in target_units}
-        for _unit_id in target_units:
-            target_units[_unit_id]['damage'] = self.game.damage_instance(self.game.hero, self.game.units[_unit_id],
-                                                                         self.spell_effects['damage'])
-        action_result['target_units'] = target_units
-        action_result['target_hexes'] = target_hexes
-        return action_result
+            self.game.deal_damage(hex_id, self.spell_effects['damage'])
+            action_steps.append({'target_hex': hex_id, 'damage': self.spell_effects['damage']})
+        return {self.action_name: action_steps}
 
 
 class ShieldBash(SpellAction):
@@ -276,7 +273,7 @@ class ActionManager:
     @classmethod
     def available_actions(cls, game: 'GameInstance', unit: 'BaseUnitObject') -> 'Dict[str, List[Hex]]':
         # calculate actions available for unit
-        available_actions: Dict[str, List[str]] = {}
+        available_actions: Dict[str, List[Hex]] = {}
         for action in unit.actions:
             targets = cls._actions[action].available_targets(game, unit)
             if targets:

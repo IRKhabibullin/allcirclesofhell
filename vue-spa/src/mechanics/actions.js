@@ -104,6 +104,20 @@ class ActionManager {
                 unitMouseoutHandler: hex => {
                     hex.polygon.classList.remove('attackTarget');
                     hex.polygon.classList.add('availableAttackTarget');
+                },
+                actionHandler: (source, actionSteps) => {
+                    console.log('actionSteps:', actionSteps);
+                    let target_hex = this.board.grid.hexes[actionSteps[0].target_hex];
+                    console.log('hexes:', source.hex, 'and', target_hex);
+                    let source_point = source.hex.toPoint();
+                    let target_point = target_hex.toPoint();
+                    source.image
+                        .animate(100, '-', source.animation_delay).move(target_point.x, target_point.y)
+                        .animate(100, '-').move(source_point.x, source_point.y);
+                    let target = this.board.getUnitByHex(target_hex);
+                    if (!!target) {
+                        target.getDamage(actionSteps[0].damage);
+                    }
                 }
             },
             range_attack: {
@@ -112,10 +126,22 @@ class ActionManager {
                 },
                 drop: () => {
                     this.actions.attack.drop()
+                },
+                actionHandler: (source, actionSteps) => {
+                    let source_point = source.hex.toPoint();
+                    let target_hex = this.board.grid.hexes[actionSteps[0].target_hex];
+                    let target_point = target_hex.toPoint();
+                    source.range_weapon.move(source_point.x + 30, source_point.y + 30).fill({'opacity': 1})
+                        .animate(150).fill({'opacity': 0}).move(target_point.x + 30, target_point.y + 30);
+                    target_hex.damage_indicator.text(actionSteps[0].damage.toString());
+                    target_hex.damage_indicator
+                        .animate(100, '-', source.animation_delay).attr({'opacity': 1})
+                        .animate(1000).font({'opacity': 0}).translate(0, -30)
+                        .animate(10).translate(0, 0);
                 }
             },
 //            spells
-            'path_of_fire': {
+            path_of_fire: {
                 set: () => {
                     this.setTargets(this.board.grid.getHexesInRange(this.board.hero.hex,
                                                                     this.board.hero.spells[this.currentAction].radius,
@@ -151,15 +177,16 @@ class ActionManager {
                 unitClickHandler: unit => {
                     this.board.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
                 },
-                actionHandler: actionData => {
+                actionHandler: (source, actionSteps) => {
                     let animation = anime.timeline({
                         complete: (anim) => {
                             this.animation_elements.clear();
                         }
                     });
 
-                    for (var i = 0; i < actionData.target_hexes.length; i++) {
-                        let hex = this.board.grid.hexes[actionData.target_hexes[i]];
+                    for (var i = 0; i < actionSteps.length; i++) {
+                        let actionStep = actionSteps[i];
+                        let hex = this.board.grid.hexes[actionStep.target_hex];
                         let {x, y} = hex.toPoint();
                         let explosion = this.animation_elements.image('./src/assets/path_of_fire_explosion.png', 60, 60);
                         animation.add({
@@ -182,9 +209,10 @@ class ActionManager {
                             duration: 100,
                             opacity: 0
                         });
-                    }
-                    for (var unit_id in actionData.target_units) {
-                        this.board.units[unit_id].getDamage(actionData.target_units[unit_id].damage);
+                        let unit = this.board.getUnitByHex(hex);
+                        if (!!unit) {
+                            unit.getDamage(actionStep.damage);
+                        }
                     }
                 }
             },
@@ -309,9 +337,9 @@ class ActionManager {
         }
     }
 
-    handleAction(actionData) {
-        if ('actionHandler' in this.actions[actionData.action]) {
-            this.actions[actionData.action].actionHandler(actionData);
+    handleAction(actionName, source, actionSteps) {
+        if ('actionHandler' in this.actions[actionName]) {
+            this.actions[actionName].actionHandler(source, actionSteps);
         }
     }
 

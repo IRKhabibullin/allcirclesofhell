@@ -51,22 +51,6 @@ class BaseUnit {
     }
 
     // animations
-    attack(target_hex, damage) {
-        /**
-        * Attack animation.
-        *    target: BaseUnit
-        */
-        let source_point = this.hex.toPoint();
-        let target_point = target_hex.toPoint();
-        this.image
-            .animate(100, '-', this.animation_delay).move(target_point.x, target_point.y)
-            .animate(100, '-').move(source_point.x, source_point.y);
-        let target = this.board.getUnitByHex(target_hex);
-        if (!!target) {
-            target.getDamage(damage);
-        }
-    }
-
     getDamage(damage) {
         this.hex.damage_indicator.text(damage.toString());
         this.hex.damage_indicator
@@ -107,33 +91,14 @@ class Hero extends BaseUnit {
         this.board.hero.range_attack_hexes = this.board.grid.getHexesInRange(this.board.hero.hex,
                                                                              this.board.hero.attack_range + 1,
                                                                              ['empty', 'unit']);
+        for (var actionName in actionData) {
+            this.board.actionManager.handleAction(actionName, this, actionData[actionName]);
+        }
         if ('action' in actionData) {
             if (!!this.updateHandler) {
                 this.updateHandler();
             }
-            if (actionData['action'] == 'attack') {
-                this.attack(this.board.grid.hexes[actionData.target_hex], actionData.damage);
-            } else if (actionData['action'] == 'range_attack') {
-                this.range_attack(this.board.grid.hexes[actionData.target_hex], actionData.damage);
-            }
         }
-    }
-
-    range_attack(target_hex, damage) {
-        /**
-        * Range attack animation.
-        *    target: BaseUnit
-        */
-        let source_point = this.hex.toPoint();
-        let target_point = target_hex.toPoint();
-//        todo move constants like hex_size in separate file and import them from there
-        this.range_weapon.move(source_point.x + 30, source_point.y + 30).fill({'opacity': 1})
-            .animate(150).fill({'opacity': 0}).move(target_point.x + 30, target_point.y + 30);
-        target_hex.damage_indicator.text(damage.toString());
-        target_hex.damage_indicator
-            .animate(100, '-', this.animation_delay).attr({'opacity': 1})
-            .animate(1000).font({'opacity': 0}).translate(0, -30)
-            .animate(10).translate(0, 0);
     }
 
     showAttackHexes(_show) {
@@ -176,10 +141,10 @@ class Unit extends BaseUnit {
 
     update(unitData, actionData) {
         super.update(unitData, actionData);
+        for (var actionName in actionData) {
+            this.board.actionManager.handleAction(actionName, this, actionData[actionName]);
+        }
         if ('action' in actionData) {
-            if (actionData.action == 'attack') {
-                this.attack(this.board.grid.hexes[actionData.target_hex], actionData.damage);
-            }
             if (!!this.updateHandler) {
                 this.updateHandler(this.hex, actionData);
             }

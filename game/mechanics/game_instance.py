@@ -2,7 +2,7 @@ import json
 import math
 from random import shuffle
 
-from game.mechanics.actions import ActionManager, ActionNotAllowedError, Action, ActionResponse
+from game.mechanics.actions import ActionManager, Action, ActionResponse
 from game.mechanics.game_objects import Hero, BaseGameObject, BaseUnitObject, Unit
 from game.models import User, GameModel, UnitModel, HeroModel, ItemModel
 from game.mechanics.board import Board, Hex
@@ -105,88 +105,22 @@ class GameInstance:
         try:
             action_data['source'] = self._hero
             action: Action = ActionManager.get_action(self, action_data)
-            response.hero_data.update(action.execute())
+            response.hero_actions.update(action.execute())
         except RuntimeError as err:
             print('Hero action failed', err)
             response.state = 'failed'
         #  if fails then return failure and units doesnt act
         # units choose from available actions
-        for unit in self._units.values():
-            available_actions = ActionManager.available_actions(self, unit)
-            chosen_action = ActionManager.get_action(self, unit.choose_action(available_actions))
-            try:
-                response.units_data[unit.pk].update(chosen_action.execute())
-            except RuntimeError as err:
-                print('Unit action failed', err)
+        if response.state != 'failed':
+            for unit in self._units.values():
+                available_actions = ActionManager.available_actions(self, unit)
+                chosen_action = ActionManager.get_action(self, unit.choose_action(available_actions))
+                try:
+                    response.units_actions[unit.pk].update(chosen_action.execute())
+                except RuntimeError as err:
+                    print('Unit action failed', err)
+        self.update_moves()
         return response
-
-    def get_game_objects(self, **kwargs):
-        game_objects = {}
-        if 'hero' in kwargs:
-            game_objects['hero'] = self._hero
-        if 'units' in kwargs:
-            game_objects['units'] = {pk: unit for pk, unit in self._units.items() if pk in kwargs['units']}
-        if 'hexes' in kwargs:
-            game_objects['hexes'] = {hex_id: _hex for hex_id, _hex in self.board.items() if hex_id in kwargs['hexes']}
-        return game_objects
-
-    def hero_action(self, action_data: dict) -> dict:
-        """
-        Make hero action
-        """
-        # todo delete
-        action_data['allowed'] = False
-        try:
-            action_result = ActionManager.execute(self, action_data)
-        except ActionNotAllowedError:
-            action_result = {'allowed': False}
-        else:
-            # update hero's and units' possible moves
-            action_result['units_actions'] = self.units_action(except_list=action_result.pop('stunned_units', []))
-            self.update_moves()
-        return action_result
-
-    def units_action(self, except_list: list) -> list:
-        """
-        Units' actions. Follows after hero's action
-        except_list: list of unit ids. These units doesnt act this time
-        """
-        units_actions = []
-        for unit in self._units.values():
-            if unit.pk in except_list:
-                continue
-            # try to find target to attack
-            targets = [hex_id for hex_id in unit.attack_hexes if self.board[hex_id].slot == slotHero]
-            if targets:
-                # suppose units can attack only hero for now
-                attack_result = ActionManager.execute(self, {'action': 'attack', 'hero_attack': False,
-                                                             'target_unit': unit.pk})
-                if attack_result['allowed']:
-                    units_actions.append({'source': str(unit.pk), 'damage_dealt': attack_result['damage']})
-            else:
-                # try to move somewhere
-                self.unit_move(unit)
-        return units_actions
-
-    def unit_move(self, unit: UnitModel):
-        """
-        Unit's move
-        """
-        _move_pos = None
-        remaining_moves = set(unit.moves)
-        while remaining_moves:
-            _move_pos = remaining_moves.pop()
-            if self.board[_move_pos].slot == slotEmpty:
-                break
-        if _move_pos:
-            self.board.place_game_object(unit, _move_pos)
-
-    def damage_instance(self, source, target, damage):
-        # apply damage modifiers
-        # call pre-damage spells
-        target.health -= damage
-        # call after-damage spells
-        return damage
 
     # region: game api
     def get_object_by_position(self, hex_id: str) -> BaseGameObject:
@@ -197,11 +131,19 @@ class GameInstance:
         """Moves object from <target_hex> to <new_position>"""
         self.board.place_game_object(game_object, new_position)
 
-    def deal_damage(self, source: BaseUnitObject, target_hex: str, damage: int):
+    def deal_damage(self, target_hex: str, damage: int):
         """Deal <damage> to object in <target_hex>"""
         # if will add damage types, then <damage> arg must be a DamageInstance class, or something
         target = self.board.get(target_hex).slot
-        target.receive_damage(damage)
+        if isinstance(target, BaseUnitObject):
+            target.receive_damage(damage)
+            if target.health <= 0:
+                self.destroy_unit(target)
+
+    def destroy_unit(self, target: BaseUnitObject):
+        self.board.get_object_position(target).slot = slotEmpty
+        if isinstance(target, Unit):
+            del self._units[target.pk]
 
     def distance(self, source: Hex, target_hex: str):
         return self.board.distance(source, self.board.get(target_hex))

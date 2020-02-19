@@ -164,7 +164,7 @@ class Board:
 
     def get_object_position(self, game_object: 'BaseGameObject'):
         """Find hex that stores passed game object"""
-        for _hex in self.__hexes:
+        for _hex in self.__hexes.values():
             if _hex.slot == game_object:
                 return _hex
         return None

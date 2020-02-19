@@ -82,12 +82,5 @@ class GameAction(APIView):
         print('request data', request.data)
         game_instance = self.gm.get_game(str(request.data['game_id']))
         action_response: ActionResponse = game_instance.make_turn(request.data)
-        # action_data = {'action': request.data['action'], **game_instance.hero_action(request.data)}
-        # if action_data['allowed']:
-        #     response_data = GameInstanceSerializer(game_instance).data
-        #     units_actions = action_data.pop('units_actions', [])
-        #     for u_action in units_actions:
-        #         response_data['units'][u_action['source']]['action'] = 'attack'
-        #         response_data['units'][u_action['source']]['damage_dealt'] = u_action['damage_dealt']
         response_data = {**GameInstanceSerializer(game_instance).data, 'action_data': action_response.to_dict()}
         return Response(response_data)
