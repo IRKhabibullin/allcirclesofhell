@@ -37,26 +37,3 @@ class GameInstanceTestCase(TestCase):
         game_instance = GameInstance.load(1)
         self.assertEqual(game_instance._game.user, user)
         self.assertEqual(game_instance.hero.name, 'Genos')
-
-    def find_movable_unit(self):
-        unit = None
-        # we will try to find movable unit 5 times. else raise exception
-        for i in range(5):
-            self.game.init_round()
-            for _unit in self.game.units.values():
-                if _unit.moves:
-                    return _unit
-        raise AssertionError
-
-    def test_unit_move(self):
-        unit = self.find_movable_unit()
-        unit_moves = unit.moves
-        self.game.unit_move(unit)
-        # check that after move unit stays at one of previously available hexes
-        self.assertIn(unit.position.id, unit_moves)
-
-        unit.moves = []
-        unit_position = unit.position
-        self.game.unit_move(unit)
-        # when no moves check that unit stays in place
-        self.assertEqual(unit.position, unit_position)
