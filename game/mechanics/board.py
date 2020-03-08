@@ -1,5 +1,5 @@
 from random import random
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, List
 from game.mechanics.constants import BOARD_RADIUS, slotEmpty
 from game.mechanics.game_objects import Obstacle
 
@@ -25,11 +25,11 @@ class Hex:
         self.slot = slot
 
     @property
-    def id(self):
+    def id(self) -> str:
         """Hex id"""
         return f'{self.q};{self.r}'
 
-    def distance_from_center(self):
+    def distance_from_center(self) -> int:
         """Distance from current hex to the center of board"""
         return max(abs(self.x), abs(self.y), abs(self.z))
 
@@ -39,7 +39,7 @@ class Hex:
     def __repr__(self):
         return f'Hex({self.id}|{self.slot})'
 
-    def as_dict(self):
+    def as_dict(self) -> dict:
         """Serialized representation"""
 
         return {'q': self.q, 'r': self.r, 'slot': str(self.slot)}
@@ -84,7 +84,7 @@ class Board:
         """Load board from saved state"""
         return cls(board_state['radius'], board_state['hexes'])
 
-    def add(self, _hex) -> bool:
+    def add(self, _hex: Hex) -> bool:
         """
         Add/update hex to board, if hex is in radius of board
         Returns success of operation
@@ -94,14 +94,14 @@ class Board:
             return True
         return False
 
-    def __getitem__(self, key) -> Hex:
+    def __getitem__(self, key: str) -> Hex:
         return self.__hexes[key]
 
-    def get(self, key, default_value=None):
+    def get(self, key: str, default_value=None) -> Hex:
         """Returns hex by its key."""
         return self.__hexes.get(key, default_value)
 
-    def __contains__(self, _hex) -> bool:
+    def __contains__(self, _hex: str) -> bool:
         return _hex in self.__hexes
 
     def __iter__(self):
@@ -112,7 +112,7 @@ class Board:
         """Returns items of dict with all hexes in board"""
         return self.__hexes.items()
 
-    def get_neighbors(self, _hex: Hex) -> list:
+    def get_neighbors(self, _hex: Hex) -> List[Hex]:
         """
         Get neighboring hexes.
         Up to 6 neighbors for given hex (Could be on the edge of board and will have less neighbors)
@@ -148,9 +148,7 @@ class Board:
         return hexes
 
     def place_game_object(self, game_object: 'BaseGameObject', hex_id: str):
-        """
-        Place game object in board according to it's position.
-        """
+        """Place game object in board according to it's position"""
         if hex_id in self.__hexes:
             _hex = self.__hexes[hex_id]
             if _hex.slot != slotEmpty and _hex.slot != game_object:
@@ -162,17 +160,14 @@ class Board:
         else:
             raise RuntimeError('No such hex on board')
 
-    def get_object_position(self, game_object: 'BaseGameObject'):
+    def get_object_position(self, game_object: 'BaseGameObject') -> Hex:
         """Find hex that stores passed game object"""
         for _hex in self.__hexes.values():
             if _hex.slot == game_object:
                 return _hex
-        return None
 
     def clear_board(self):
-        """
-        Clear board from units, hero, game objects. Re-generate obstacles
-        """
+        """Clear board from units, hero, game objects. Re-generate obstacles"""
         # todo move obstacles generating into function and call it separately
         for _hex in self.__hexes.values():
             if _hex.slot != slotEmpty:
@@ -180,20 +175,17 @@ class Board:
             _hex.slot = slotEmpty
 
     def set_obstacles(self):
+        """Generates obstacles on board"""
         for _hex in self.__hexes.values():
             if _hex.slot == slotEmpty:
                 if int(random() * 100) < OBSTACLE_CHANCE:
                     _hex.slot = Obstacle()
 
     @staticmethod
-    def distance(hex_a: Hex, hex_b: Hex):
-        """
-        Get distance between two hexes
-        """
+    def distance(hex_a: Hex, hex_b: Hex) -> int:
+        """Get distance between two hexes"""
         return max(abs(hex_a.x - hex_b.x), abs(hex_a.y - hex_b.y), abs(hex_a.z - hex_b.z))
 
-    def get_state(self):
-        """
-        Get serialized board state
-        """
+    def get_state(self) -> dict:
+        """Get serialized board state"""
         return {'radius': self.radius, 'hexes': {k: v.as_dict() for k, v in self.items()}}

@@ -73,6 +73,10 @@ class ActionManager {
                     } else {
                         this.actions.move.buildPath(hex);
                     }
+                },
+                actionHandler: (source, actionSteps) => {
+                    let target_hex = this.board.grid.hexes[actionSteps[0].target_hex];
+                    source.move(target_hex);
                 }
             },
             attack: {
@@ -264,6 +268,9 @@ class ActionManager {
                         let unit = this.board.getUnitByHex(_hex);
                         if (!!unit) {
                             unit.getDamage(actionStep.damage);
+                            if (!!actionStep.pushed_to) {
+                                unit.move(this.board.grid.hexes[actionStep.pushed_to]);
+                            }
                         }
                         if (actionStep.main_target == true) {
                             main_target = actionStep.target_hex;
@@ -322,6 +329,10 @@ class ActionManager {
                     this.actionData.destination = hex;
                     this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
                     hex.polygon.classList.remove('secondaryTarget');
+                },
+                actionHandler: (source, actionSteps) => {
+                    let target_hex = this.board.grid.hexes[actionSteps[0].target_hex];
+                    source.move(target_hex, 10);
                 }
             }
         }

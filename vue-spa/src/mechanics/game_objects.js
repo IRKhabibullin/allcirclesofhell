@@ -40,14 +40,8 @@ class BaseUnit {
         this.damage = unitData.damage;
         this.attack_range = unitData.attack_range;
         this.move_range = unitData.move_range;
-
-        if (unitData.position != (this.hex.q + ';' + this.hex.r)) {
-            let new_hex = this.board.grid.hexes[unitData.position];
-            this.hex = new_hex;
-            this.move(new_hex);
-            this.moves = unitData.moves;
-            this.attack_hexes = unitData.attack_hexes;
-        }
+        this.moves = unitData.moves;
+        this.attack_hexes = unitData.attack_hexes;
     }
 
     // animations
@@ -59,13 +53,14 @@ class BaseUnit {
             .animate(10).translate(0, 0);
     }
 
-    move() {
+    move(target_hex, speed=200) {
         /**
         * Move animation.
         *    destination: hex
         */
-        let coords = this.hex.toPoint();
-        this.image.animate(200, '>', this.animation_delay).move(coords.x, coords.y);
+        this.hex = target_hex;
+        let target_point = target_hex.toPoint();
+        this.image.animate(speed, '>', this.animation_delay).move(target_point.x, target_point.y);
     }
     // end animations
 };
