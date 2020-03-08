@@ -1,11 +1,13 @@
 import json
 import math
 from random import shuffle
+from typing import Dict
 
-from game.mechanics.actions import ActionManager, ActionNotAllowedError
-from game.models import User, GameModel, Unit, Hero, Item
-from game.mechanics.board import Board
-from game.mechanics.constants import ocpHero, ocpEmpty, ocpUnit
+from game.mechanics.actions import ActionManager, Action, ActionResponse
+from game.mechanics.game_objects import Hero, BaseGameObject, BaseUnitObject, Unit
+from game.models import User, GameModel, UnitModel, HeroModel, ItemModel
+from game.mechanics.board import Board, Hex
+from game.mechanics.constants import slotHero, slotEmpty, slotUnit
 
 
 class GameInstance:
@@ -13,36 +15,42 @@ class GameInstance:
     Class to manage single game instance
     """
     def __init__(self, game_model: GameModel):
-        """
-        Loading board from passed game model or generating new
-        """
+        """Loading board from passed game model or generating new"""
         self._game = game_model
         game_state = json.loads(self._game.state)
         self.board = Board(**game_state.get('board', {}))
+        self._hero = Hero(self._game.hero)
+        self._units = {}
 
     @classmethod
-    def new(cls, user: User, hero: dict):
-        """Create new game but not save"""
-        hero = Hero.objects.create(name=hero['name'], weapon=Item.objects.get(name='Sword'),
-                                   suit=Item.objects.get(name='Cuirass'))
-        _game = GameModel.objects.create(user=user, hero=hero)
+    def new(cls, user: User, hero_data: dict):
+        """
+        Create new game but not save
+        Returns game id and game instance itself
+        """
+        hero_model = HeroModel.objects.create(name=hero_data['name'],
+                                              suit=ItemModel.objects.get(name='Cuirass'),
+                                              weapon=ItemModel.objects.get(name='Sword'))
+        _game = GameModel.objects.create(user=user, hero=hero_model)
         _instance = cls(_game)
         return _game.pk, _instance
 
     @classmethod
-    def load(cls, game_id):
+    def load(cls, game_id: int):
         """Load already created game"""
         _game = GameModel.objects.get(pk=game_id)
         if _game:
             return cls(_game)
 
     @property
-    def hero(self):
-        return self._game.hero
+    def hero(self) -> Hero:
+        """Get game hero"""
+        return self._hero
 
     @property
-    def units(self):
-        return self._game.units
+    def units(self) -> Dict[int, Unit]:
+        """Get game units dict"""
+        return self._units
 
     def init_round(self):
         """
@@ -51,14 +59,15 @@ class GameInstance:
         Setting hero position
         Counting and placing units
         """
-        self._game.units = {}
+        self._units = {}
         self.board.clear_board()
-        self.board.place_game_object(self.hero, f'0;{self.board.radius // 2}')
+        self.board.place_game_object(self._hero, f'0;{self.board.radius // 2}')
+        self.board.set_obstacles()
 
-        available_hexes = {_id for _id, _hex in self.board.items() if _hex.occupied_by == ocpEmpty}
+        available_hexes = {_id for _id, _hex in self.board.items() if _hex.slot == slotEmpty}
         # area around hero, where units must not be placed
-        clear_area_range = max(self.board.radius // 2 - self._game.round // 8, 1)
-        hexes_in_range = self.board.get_hexes_in_range(self.hero.position, clear_area_range, [ocpEmpty, ocpHero])
+        safe_range = max(self.board.radius // 2 - self._game.round // 8, 1)
+        hexes_in_range = self.board.get_hexes_in_range(self._hero.position, safe_range, allowed=[slotEmpty, slotHero])
         available_hexes = list(available_hexes - hexes_in_range.keys())
         shuffle(available_hexes)
 
@@ -70,10 +79,11 @@ class GameInstance:
             """
             u_count = points if unit_level == 1 else round((points // 2) / unit_level)
             for i in range(u_count):
-                unit = Unit.objects.get(level=unit_level)
-                unit.pk = len(self.units)
+                unit = UnitModel.objects.get(level=unit_level)
+                unit.pk = len(self._units)
+                unit = Unit(unit)
                 self.board.place_game_object(unit, available_hexes.pop())
-                self.units[unit.pk] = unit
+                self._units[unit.pk] = unit
             points_remain = int(points - u_count * unit_level)
             if points_remain:
                 place_units(points_remain, unit_level // 2)
@@ -83,78 +93,78 @@ class GameInstance:
         self.update_moves()
 
     def update_moves(self):
-        self.hero.moves = list(
-            self.board.get_hexes_in_range(self.hero.position, self.hero.move_range, [ocpEmpty]).keys())
-        self.hero.attack_hexes = list(self.board.get_hexes_in_range(self.hero.position, self.hero.attack_range,
-                                                                    [ocpEmpty, ocpUnit]).keys())
-        for unit in self.units.values():
-            unit.moves = list(self.board.get_hexes_in_range(unit.position, unit.move_range, [ocpEmpty]).keys())
+        """Update available moves and attack hexes of hero and units"""
+        self._hero.moves = list(
+            self.board.get_hexes_in_range(self._hero.position, self._hero.move_range, allowed=[slotEmpty]).keys())
+        self._hero.attack_hexes = list(self.board.get_hexes_in_range(self._hero.position, self._hero.attack_range,
+                                                                     allowed=[slotEmpty, slotUnit]).keys())
+        for unit in self._units.values():
+            unit.moves = list(self.board.get_hexes_in_range(unit.position, unit.move_range, allowed=[slotEmpty]).keys())
             unit.attack_hexes = list(self.board.get_hexes_in_range(unit.position, unit.attack_range,
-                                                                   [ocpEmpty, ocpHero]).keys())
+                                                                   allowed=[slotEmpty, slotHero]).keys())
 
-    def hero_action(self, action_data: dict) -> dict:
-        """
-        Make hero action
-        """
-        action_data['allowed'] = False
+    def make_turn(self, action_data: dict) -> ActionResponse:
+        """Make game turn. First goes hero, then units"""
+        response = ActionResponse(action_data['action'])
+        # hero performs actions first
         try:
-            action_result = ActionManager.execute(self, action_data)
-        except ActionNotAllowedError:
-            action_result = {'allowed': False}
-        else:
-            # update hero's and units' possible moves
-            action_result['units_actions'] = self.units_action(except_list=action_result.pop('stunned_units', []))
-            self.update_moves()
-        return action_result
+            action_data['source'] = self._hero
+            action: Action = ActionManager.get_action(self, action_data)
+            response.hero_actions.update(action.execute())
+        except RuntimeError as err:
+            print('Hero action failed', err)
+            response.state = 'failed'
+        # if fails then return failure and units doesnt act
+        if response.state != 'failed':
+            for unit in self._units.values():
+                # units choose from available actions
+                available_actions = ActionManager.available_actions(self, unit)
+                chosen_action = ActionManager.get_action(self, unit.choose_action(available_actions))
+                try:
+                    response.units_actions[unit.pk].update(chosen_action.execute())
+                except RuntimeError as err:
+                    print('Unit action failed', err)
+        self.update_moves()
+        return response
 
-    def units_action(self, except_list: list) -> list:
-        """
-        Units' actions. Follows after hero's action
-        except_list: list of unit ids. These units doesnt act this time
-        """
-        units_actions = []
-        for unit in self.units.values():
-            if unit.pk in except_list:
-                continue
-            # try to find target to attack
-            targets = [hex_id for hex_id in unit.attack_hexes if self.board[hex_id].occupied_by == ocpHero]
-            if targets:
-                # suppose units can attack only hero for now
-                attack_result = ActionManager.execute(self, {'action': 'attack', 'hero_attack': False,
-                                                             'target_unit': unit.pk})
-                if attack_result['allowed']:
-                    units_actions.append({'source': str(unit.pk), 'damage_dealt': attack_result['damage']})
-            else:
-                # try to move somewhere
-                self.unit_move(unit)
-        return units_actions
+    # region: game api
+    def get_object_by_position(self, hex_id: str) -> BaseGameObject:
+        """Get object position"""
+        _hex = self.board.get(hex_id)
+        if _hex:
+            return _hex.slot
 
-    def unit_move(self, unit: Unit):
-        """
-        Unit's move
-        """
-        _move_pos = None
-        remaining_moves = set(unit.moves)
-        while remaining_moves:
-            _move_pos = remaining_moves.pop()
-            if self.board[_move_pos].occupied_by == ocpEmpty:
-                break
-        if _move_pos:
-            self.board.place_game_object(unit, _move_pos)
+    def move_object(self, game_object: BaseGameObject, new_position: str):
+        """Moves object from <target_hex> to <new_position>"""
+        self.board.place_game_object(game_object, new_position)
 
-    def damage_instance(self, source, target, damage):
-        # apply damage modifiers
-        # call pre-damage spells
-        target.health -= damage
-        # call after-damage spells
-        if target.health <= 0:
-            self.on_death(target)
-        return damage
+    def deal_damage(self, target_hex: str, damage: int):
+        """Deal <damage> to object in <target_hex>"""
+        # if will add damage types, then <damage> arg must be a DamageInstance class, or something
+        target = self.board.get(target_hex).slot
+        if isinstance(target, BaseUnitObject):
+            target.receive_damage(damage)
+            if target.health <= 0:
+                self.destroy_unit(target)
 
-    def on_death(self, target):
-        if isinstance(target, Hero):
-            # game over
-            pass
-        elif isinstance(target, Unit):
-            target.position.occupied_by = ocpEmpty
-            del self.units[target.pk]
+    def destroy_unit(self, target: BaseUnitObject):
+        """Remove unit from game. Called on units death"""
+        self.board.get_object_position(target).slot = slotEmpty
+        if isinstance(target, Unit):
+            del self._units[target.pk]
+
+    def distance(self, source: Hex, target_hex: str) -> int:
+        """Get distance between two hexes"""
+        return self.board.distance(source, self.board.get(target_hex))
+
+    def get_hexes_in_range(self, start_hex: Hex, _range: int, **kwargs) -> Dict[str, Hex]:
+        """
+        Get hexes in <_range> away from <start_hex>. <start_hex> hex itself doesn't count in range
+        Can specify allowed hex occupation in kwargs, or filter them separately with according method
+        """
+        return self.board.get_hexes_in_range(start_hex, _range, **kwargs)
+
+    def get_hex(self, hex_id: str, default_value=None) -> Hex:
+        """Get hex by it's id"""
+        return self.board.get(hex_id, default_value)
+    # endregion

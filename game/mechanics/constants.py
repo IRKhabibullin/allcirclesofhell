@@ -1,9 +1,9 @@
 """Game constants"""
 
-# Occupation values
-ocpHero = 'hero'
-ocpUnit = 'unit'
-ocpObstacle = 'obstacle'
-ocpEmpty = 'empty'
+# Hex slot values
+slotHero = 'hero'
+slotUnit = 'unit'
+slotObstacle = 'obstacle'
+slotEmpty = 'empty'
 
 BOARD_RADIUS = 6

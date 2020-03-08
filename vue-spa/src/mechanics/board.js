@@ -33,14 +33,15 @@ class Board {
         this.altPressed = false;
     }
 
-    handleAction(actionData) {
-        console.log('actionData', actionData);
-        if (actionData.action_data.allowed) {
-            this.grid.update_hexes(actionData.board.hexes);
-            this.actionManager.handleAction(actionData.action_data);
+    handleAction(response) {
+        console.log('response', response);
+        if (response.action_data.state != 'success') {
             this.actionManager.changeAction('move');
-            this.hero.update(actionData.hero, actionData.action_data);
-            this.update_units(actionData.units, actionData.units_actions);
+        } else {
+            this.grid.update_hexes(response.board.hexes);
+            this.hero.update(response.hero, response.action_data.hero_actions);
+            this.update_units(response.units, response.action_data.units_actions);
+            this.actionManager.changeAction('move');
         }
     }
 
@@ -49,17 +50,28 @@ class Board {
         let units_to_update = Object.keys(this.units).filter(u => u in new_units);
         let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
 
-        units_to_update.forEach(unit_id => {
-            this.units[unit_id].update(new_units[unit_id], {'action': new_units[unit_id].action,
-                                                            'damage': new_units[unit_id].damage_dealt});
-        });
         units_to_remove.forEach(unit_id => {
             this.units[unit_id].image.remove();
             delete this.units[unit_id];
         });
         units_to_add.forEach(unit_id => {
             this.units[unit_id] = new Unit(this, new_units[unit_id]);
-        })
+        });
+        units_to_update.forEach(unit_id => {
+            this.units[unit_id].update(new_units[unit_id], units_actions[unit_id]);
+        });
+    }
+
+    getUnitByHex(_hex) {
+        if (this.hero.hex == _hex) {
+            return this.hero;
+        }
+        for (var unit_id in this.units) {
+            let unit = this.units[unit_id];
+            if (unit.hex == _hex) {
+                return unit;
+            }
+        };
     }
 
     showMoves() {
