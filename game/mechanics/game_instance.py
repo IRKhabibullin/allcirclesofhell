@@ -1,6 +1,7 @@
 import json
 import math
 from random import shuffle
+from typing import Dict
 
 from game.mechanics.actions import ActionManager, Action, ActionResponse
 from game.mechanics.game_objects import Hero, BaseGameObject, BaseUnitObject, Unit
@@ -148,6 +149,6 @@ class GameInstance:
     def distance(self, source: Hex, target_hex: str):
         return self.board.distance(source, self.board.get(target_hex))
 
-    def get_hexes_in_range(self, start_hex: Hex, _range: int, **kwargs) -> dict:
+    def get_hexes_in_range(self, start_hex: Hex, _range: int, **kwargs) -> Dict[str, Hex]:
         return self.board.get_hexes_in_range(start_hex, _range, **kwargs)
     # endregion

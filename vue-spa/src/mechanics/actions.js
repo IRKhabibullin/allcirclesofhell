@@ -248,7 +248,8 @@ class ActionManager {
                 unitClickHandler: unit => {
                     this.board.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
                 },
-                actionHandler: actionData => {
+                actionHandler: (source, actionSteps) => {
+                    console.log('action steps', actionSteps);
                     const angles = {
                         '1;-1': 60,
                         '1;0': 120,
@@ -256,14 +257,24 @@ class ActionManager {
                         '-1;1': 240,
                         '-1;0': 300
                     }
-                    let target = actionData.target_hex.split(';');
-                    let {x, y} = this.board.hero.hex.toPoint();
-                    target[0] -= this.board.hero.hex.q;
-                    target[1] -= this.board.hero.hex.r;
-                    let angle = angles[target[0] + ';' + target[1]];
-                    for (var unit_id in actionData.target_units) {
-                        this.board.units[unit_id].getDamage(actionData.target_units[unit_id].damage);
+                    let main_target = null;
+                    for (var i = 0; i < actionSteps.length; i++) {
+                        let actionStep = actionSteps[i];
+                        let _hex = this.board.grid.hexes[actionStep.target_hex];
+                        let unit = this.board.getUnitByHex(_hex);
+                        if (!!unit) {
+                            unit.getDamage(actionStep.damage);
+                        }
+                        if (actionStep.main_target == true) {
+                            main_target = actionStep.target_hex;
+                        }
                     }
+
+                    let target = main_target.split(';');
+                    let {x, y} = source.hex.toPoint();
+                    target[0] -= source.hex.q;
+                    target[1] -= source.hex.r;
+                    let angle = angles[target[0] + ';' + target[1]];
                     let cone = this.animation_elements.image('./src/assets/bash_wave.png', 60, 60)
                     let animation = anime.timeline({
                         complete: (anim) => {
@@ -311,8 +322,6 @@ class ActionManager {
                     this.actionData.destination = hex;
                     this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
                     hex.polygon.classList.remove('secondaryTarget');
-                },
-                actionHandler: actionData => {
                 }
             }
         }

@@ -152,7 +152,7 @@ class PathOfFire(SpellAction):
     @classmethod
     def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject') -> 'List[Hex]':
         try:
-            spell = unit.spells.get(code_name=PathOfFire.action_name)
+            spell = unit.spells.get(code_name=cls.action_name)
         except SpellModel.DoesNotExist:
             raise RuntimeError('Action not allowed')
         spell_effects = {item.effect.code_name: item.value for item in spell.spelleffectmodel_set.all()}
@@ -181,48 +181,80 @@ class ShieldBash(SpellAction):
     """Shield bash spell"""
     action_name = 'shield_bash'
 
-    def __init__(self, game, action_request):
-        super().__init__(game, action_request)
-        if self.game.board.distance(self.game.hero.position, self.target_hex) > self.spell_effects['radius']:
-            raise ActionNotAllowedError
+    def __init__(self, game, action_data):
+        super().__init__(game, action_data)
 
-    def execute(self):
-        action_result = {'target_hex': self.target_hex.id}
-        target_hexes = list(set(self.game.board.get_hexes_in_range(self.target_hex, 1)).intersection(
-            self.game.board.get_hexes_in_range(self.game.hero.position, 1)) - {self.game.hero.position.id})
-        targets = {_unit.pk: {} for _unit in self.game.units.values() if _unit.position.id in target_hexes}
-        for _unit_id in targets:
-            _unit = self.game.units[_unit_id]
-            dq, dr = _unit.position.q - self.game.hero.position.q, _unit.position.r - self.game.hero.position.r
-            hex_behind_id = f"{_unit.position.q + dq};{_unit.position.r + dr}"
-            hex_behind = self.game.board.get(hex_behind_id)
-            if not hex_behind or hex_behind.occupied_by != slotEmpty:
-                # if no hex behind bashed unit or hex behind is occupied, then damage is doubled
-                targets[_unit_id]['damage'] = self.spell_effects['damage'] * 2
-            else:
-                # if hex behind is empty, then bashed unit is pushed back at this empty hex
-                targets[_unit_id]['damage'] = self.spell_effects['damage']
-                self.game.board.place_game_object(_unit, hex_behind_id)
-            self.game.damage_instance(self.game.hero, _unit, targets[_unit_id]['damage'])
-        action_result['target_units'] = targets
-        action_result['stunned_units'] = list(targets.keys())
-        return action_result
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject') -> 'List[Hex]':
+        try:
+            spell = unit.spells.get(code_name=cls.action_name)
+        except SpellModel.DoesNotExist:
+            raise RuntimeError('Action not allowed')
+        spell_effects = {item.effect.code_name: item.value for item in spell.spelleffectmodel_set.all()}
+        targets = game.get_hexes_in_range(unit.position, spell_effects['radius']).values()
+        targets = [_hex for _hex in targets if unit.position != _hex]
+        return targets
+
+    def execute(self) -> Dict[str, List]:
+        if self.game.distance(self.source.position, self.target_hex) > self.spell_effects['radius']:
+            raise RuntimeError('Target is too far')
+
+        action_steps = []
+        # find hexes affected by spell (target itself and two neighbours
+        source_area = self.game.get_hexes_in_range(self.source.position,
+                                                   self.game.distance(self.source.position, self.target_hex))
+        affected_hexes = {hex_id: source_area[hex_id] for hex_id in set(source_area).intersection(
+            self.game.get_hexes_in_range(self.game.board.get(self.target_hex), 1))}
+        # define hex where bash comes from. For spell range 1 its hero himself
+        distances = {hex_id: self.game.distance(self.source.position, hex_id) for hex_id in affected_hexes}
+        bash_source = affected_hexes.pop(min(distances, key=distances.get))
+
+        for hex_id in affected_hexes:
+            hex_slot = self.game.get_object_by_position(hex_id)
+            action_step = {'target_hex': hex_id}
+            if isinstance(hex_slot, BaseUnitObject):
+                dq = source_area[hex_id].q - bash_source.q
+                dr = source_area[hex_id].r - bash_source.r
+                hex_behind = f"{source_area[hex_id].q + dq};{source_area[hex_id].r + dr}"
+                if not self.game.board.get(hex_behind) or self.game.get_object_by_position(hex_behind) != slotEmpty:
+                    damage_to_target = self.spell_effects['damage'] * 2
+                else:
+                    damage_to_target = self.spell_effects['damage']
+                    self.game.move_object(hex_slot, hex_behind)
+                self.game.deal_damage(hex_id, damage_to_target)
+                action_step['damage'] = damage_to_target
+            if hex_id == self.target_hex:
+                action_step['main_target'] = True
+            if len(action_step) > 1:
+                action_steps.append(action_step)
+        # todo stun these units, so they won't act. Maybe add int field 'stunned' to units and countdown it each turn
+        return {self.action_name: action_steps}
 
 
 class Blink(SpellAction):
     """Blink spell"""
     action_name = 'blink'
 
-    def __init__(self, game, action_request):
-        super().__init__(game, action_request)
-        if self.target_hex.occupied_by != slotEmpty:
-            raise ActionNotAllowedError
-        if self.game.board.distance(self.game.hero.position, self.target_hex) > self.spell_effects['radius']:
-            raise ActionNotAllowedError
+    def __init__(self, game: 'GameInstance', action_data):
+        if not isinstance(action_data['source'], BaseUnitObject):
+            raise RuntimeError(f'This game object can not perform action {self.action_name}')
+        super().__init__(game, action_data)
 
-    def execute(self):
-        self.game.board.place_game_object(self.game.hero, self.target_hex.id)
-        return {}
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
+        try:
+            spell = unit.spells.get(code_name=cls.action_name)
+        except SpellModel.DoesNotExist:
+            raise RuntimeError('Action not allowed')
+        spell_effects = {item.effect.code_name: item.value for item in spell.spelleffectmodel_set.all()}
+        targets = game.get_hexes_in_range(unit.position, spell_effects['radius'], allowed=[slotEmpty])
+        return list(targets.values())
+
+    def execute(self) -> Dict[str, List]:
+        if self.game.distance(self.source.position, self.target_hex) <= self.spell_effects['radius']:
+            self.game.move_object(self.source, self.target_hex)
+            return {}
+        raise RuntimeError('Cant move there')
 
 
 class ActionManager:

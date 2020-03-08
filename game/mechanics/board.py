@@ -1,5 +1,5 @@
 from random import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
 from game.mechanics.constants import BOARD_RADIUS, slotEmpty
 from game.mechanics.game_objects import Obstacle
 
@@ -124,7 +124,7 @@ class Board:
                 _neighbors.append(_neighbor)
         return _neighbors
 
-    def get_hexes_in_range(self, start_hex: Hex, _range: int, **kwargs) -> dict:
+    def get_hexes_in_range(self, start_hex: Hex, _range: int, **kwargs) -> Dict[str, Hex]:
         """
         Get hexes in <_range> away from <start_hex>. <start_hex> hex itself doesn't count in range
         Can specify allowed hex occupation in kwargs, or filter them separately with according method
@@ -136,7 +136,7 @@ class Board:
                 hexes_in_range[_hex_id] = self.get(_hex_id)
         return self.filter(hexes_in_range, **kwargs)
 
-    def filter(self, hexes: dict, **kwargs) -> dict:
+    def filter(self, hexes: dict, **kwargs) -> Dict[str, Hex]:
         """Filter passed hexes by their slots"""
         for hex_id in list(hexes.keys()):
             if hex_id not in self.__hexes:
