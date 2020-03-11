@@ -208,7 +208,7 @@ class ShieldBash(SpellAction):
         source_area = self.game.get_hexes_in_range(self.source.position,
                                                    self.game.distance(self.source.position, self.target_hex))
         affected_hexes = {hex_id: source_area[hex_id] for hex_id in set(source_area).intersection(
-            self.game.get_hexes_in_range(self.game.board.get(self.target_hex), 1))}
+            self.game.get_hexes_in_range(self.game._board.get(self.target_hex), 1))}
         # define hex where bash comes from. For spell range 1 its hero himself
         distances = {hex_id: self.game.distance(self.source.position, hex_id) for hex_id in affected_hexes}
         bash_source = affected_hexes.pop(min(distances, key=distances.get))
@@ -220,7 +220,7 @@ class ShieldBash(SpellAction):
                 dq = source_area[hex_id].q - bash_source.q
                 dr = source_area[hex_id].r - bash_source.r
                 hex_behind = f"{source_area[hex_id].q + dq};{source_area[hex_id].r + dr}"
-                if not self.game.board.get(hex_behind) or self.game.get_object_by_position(hex_behind) != slotEmpty:
+                if not self.game._board.get(hex_behind) or self.game.get_object_by_position(hex_behind) != slotEmpty:
                     action_step['damage'] = self.spell_effects['damage'] * 2
                 else:
                     action_step['damage'] = self.spell_effects['damage']

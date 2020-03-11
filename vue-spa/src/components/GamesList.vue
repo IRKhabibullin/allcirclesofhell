@@ -13,7 +13,7 @@
             <div v-bind:id="'game_details_' + game.game_id" style="display: none">
                 <small>Created: {{ game.created }}</small>
                 <b-badge variant="secondary">Round: {{ game.round }}</b-badge>
-                <b-badge href="#" variant="success" pill v-on:click="gameSelected(game.game_id)">Play</b-badge>
+                <b-badge href="#" variant="success" pill v-on:click="startRound(game.game_id)">Play</b-badge>
                 <b-badge href="#" variant="danger" pill v-on:click="deleteGame(game.game_id)">Delete</b-badge>
             </div>
         </b-list-group-item>
@@ -37,7 +37,7 @@
                 </b-form-group>
                 <div class="float-right p-1">
                     <b-button @click="showPopover = false" size="sm" variant="danger">Cancel</b-button>
-                    <b-button @click="startNew" size="sm" variant="primary">Ok</b-button>
+                    <b-button @click="newGame" size="sm" variant="primary">Ok</b-button>
                 </div>
             </div>
         </b-popover>
@@ -94,12 +94,12 @@
                 let game_details = document.getElementById('game_details_' + game_id);
                 game_details.setAttribute('style', 'display: ' + (toShow ? 'inline' : 'none'))
             },
-            gameSelected(game_id) {
-                this.$emit('game_selected', game_id);
+            startRound(game_id) {
+                this.$emit('start_round', game_id);
             },
-            startNew() {
+            newGame() {
                 this.showPopover = false;
-                this.$emit('start_new', this.newHeroName);
+                this.$emit('new_game', this.newHeroName);
             }
         }
     }

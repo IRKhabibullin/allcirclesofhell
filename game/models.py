@@ -114,11 +114,3 @@ class GameModel(models.Model):
     round = models.IntegerField(default=1)  # round in the game
     # jsoned state of game. Need to save board state, shops assortment and so on
     state = models.TextField(default='{}')
-
-    units = {}
-
-    # def save_state(self):
-
-    # def save(self, *args, **kwargs):
-    #     self.save_state()
-    #     super().save(*args, **kwargs)

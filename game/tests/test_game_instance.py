@@ -20,9 +20,9 @@ class GameInstanceTestCase(TestCase):
         self.assertEqual(self.game.hero.name, 'Genos')
 
     def test_init_round(self):
-        self.game.init_round()
+        self.game.start_round()
         self.assertEqual(self.game.hero.position.id, '0;3')
-        self.assertDictEqual(self.game.board.get_hexes_in_range(self.game.hero.position, 3, allowed=[slotUnit]), {})
+        self.assertDictEqual(self.game._board.get_hexes_in_range(self.game.hero.position, 3, allowed=[slotUnit]), {})
         self.assertEqual(sum([unit.level for unit in self.game.units.values()]), self.game._game.round)
 
     def test_new(self):

@@ -8,8 +8,8 @@ const colors = {
 
 
 class BaseUnit {
-    constructor(board, unitData) {
-        this.board = board;
+    constructor(game_instance, unitData) {
+        this.game_instance = game_instance;
 
         this.name = unitData.name;
         this.health = unitData.health;
@@ -19,10 +19,10 @@ class BaseUnit {
         this.move_range = unitData.move_range;
         this.moves = unitData.moves;
         this.attack_hexes = unitData.attack_hexes;
-        this.hex = board.grid.hexes[unitData.position];
+        this.hex = game_instance.grid.hexes[unitData.position];
         this.img_path = unitData.img_path;
         this.animation_delay = 0; // animation delay. On turn hero should act first, units after his actions.
-        this.image = this.board.svg.image(this.img_path);
+        this.image = this.game_instance.svg.image(this.img_path);
         let unit_coords = this.hex.toPoint();
         this.image.move(unit_coords.x, unit_coords.y);
         this.updateHandler = null;
@@ -67,12 +67,12 @@ class BaseUnit {
 
 
 class Hero extends BaseUnit {
-    constructor(board, hero_data) {
-        super(board, hero_data);
+    constructor(game_instance, hero_data) {
+        super(game_instance, hero_data);
         this.img_path = './src/assets/board_hero_sized.png';
-        this.range_attack_hexes = board.grid.getHexesInRange(this.hex, this.attack_range + 1, ['empty', 'unit']);
+        this.range_attack_hexes = game_instance.grid.getHexesInRange(this.hex, this.attack_range + 1, ['empty', 'unit']);
         let coords = this.hex.toPoint();
-        this.range_weapon = board.svg.circle(5).fill({color: 'black', opacity: 0});
+        this.range_weapon = game_instance.svg.circle(5).fill({color: 'black', opacity: 0});
         this.spells = {};
         hero_data.spells.forEach(spell => {
             this.spells[spell.code_name] = spell.effects;
@@ -83,11 +83,11 @@ class Hero extends BaseUnit {
 
     update(unitData, actionData) {
         super.update(unitData, actionData);
-        this.board.hero.range_attack_hexes = this.board.grid.getHexesInRange(this.board.hero.hex,
-                                                                             this.board.hero.attack_range + 1,
+        this.game_instance.hero.range_attack_hexes = this.game_instance.grid.getHexesInRange(this.game_instance.hero.hex,
+                                                                             this.game_instance.hero.attack_range + 1,
                                                                              ['empty', 'unit']);
         for (var actionName in actionData) {
-            this.board.actionManager.handleAction(actionName, this, actionData[actionName]);
+            this.game_instance.actionManager.handleAction(actionName, this, actionData[actionName]);
         }
         if ('action' in actionData) {
             if (!!this.updateHandler) {
@@ -98,7 +98,7 @@ class Hero extends BaseUnit {
 
     showAttackHexes(_show) {
         this.attack_hexes.forEach(hex_id => {
-            let element = this.board.grid.hexes[hex_id].polygon;
+            let element = this.game_instance.grid.hexes[hex_id].polygon;
             if (_show)
                 element.classList.add('availableAttackTarget');
             else
@@ -108,7 +108,7 @@ class Hero extends BaseUnit {
 
    showRangeAttackHexes(_show) {
         this.range_attack_hexes.forEach(hex_id => {
-            let element = this.board.grid.hexes[hex_id].polygon;
+            let element = this.game_instance.grid.hexes[hex_id].polygon;
             if (_show)
                 element.classList.add('availableAttackTarget');
             else
@@ -119,8 +119,8 @@ class Hero extends BaseUnit {
 
 
 class Unit extends BaseUnit {
-    constructor(board, unit_data) {
-        super(board, unit_data);
+    constructor(game_instance, unit_data) {
+        super(game_instance, unit_data);
         this.pk = unit_data.pk;
         this.animation_delay = 200;
 
@@ -136,27 +136,29 @@ class Unit extends BaseUnit {
 
     update(unitData, actionData) {
         super.update(unitData, actionData);
-        for (var actionName in actionData) {
-            this.board.actionManager.handleAction(actionName, this, actionData[actionName]);
-        }
-        if ('action' in actionData) {
-            if (!!this.updateHandler) {
-                this.updateHandler(this.hex, actionData);
+        if (!!actionData) {
+            for (var actionName in actionData) {
+                this.game_instance.actionManager.handleAction(actionName, this, actionData[actionName]);
+            }
+            if ('action' in actionData) {
+                if (!!this.updateHandler) {
+                    this.updateHandler(this.hex, actionData);
+                }
             }
         }
     }
 
     mouseoverHandler(event) {
-        this.board.show_unit_card = true;
-        this.board.current_unit = this;
-        if (['attack', 'range_attack'].includes(this.board.selectedAction)) {
+        this.game_instance.show_unit_card = true;
+        this.game_instance.current_unit = this;
+        if (['attack', 'range_attack'].includes(this.game_instance.selectedAction)) {
             let action_range = 0
-            if (this.board.selectedAction == 'attack') {
-                action_range = this.board.hero.attack_range;
-            } else if (this.board.selectedAction == 'range_attack') {
-                action_range = this.board.hero.attack_range + 1;
+            if (this.game_instance.selectedAction == 'attack') {
+                action_range = this.game_instance.hero.attack_range;
+            } else if (this.game_instance.selectedAction == 'range_attack') {
+                action_range = this.game_instance.hero.attack_range + 1;
             }
-            if (this.board.grid.distance(this.hex, this.board.hero.hex) <= action_range) {
+            if (this.game_instance.grid.distance(this.hex, this.game_instance.hero.hex) <= action_range) {
                 document.getElementById(this.hex.q + ';' + this.hex.r).setAttribute('fill', colors.target);
             }
         }
@@ -166,8 +168,8 @@ class Unit extends BaseUnit {
     }
 
     mouseoutHandler(event) {
-        this.board.show_unit_card = false;
-        if (['attack', 'range_attack'].includes(this.board.selectedAction)) {
+        this.game_instance.show_unit_card = false;
+        if (['attack', 'range_attack'].includes(this.game_instance.selectedAction)) {
             document.getElementById(this.hex.q + ';' + this.hex.r).setAttribute('fill', this.hex.image);
         }
         if (!!this.outTargetHandler) {

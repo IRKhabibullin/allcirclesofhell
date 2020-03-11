@@ -33,7 +33,7 @@ class Hex {
     /**
     * Class for hex and operations with it
     */
-    constructor(hex_data, board) {
+    constructor(hex_data, game_instance) {
         this.q = hex_data.q;
         this.r = hex_data.r;
         this.x = hex_data.q;
@@ -41,9 +41,9 @@ class Hex {
         this.y = -this.q - this.r;
         this.slot = hex_data.slot;
         this.polygon = null;
-        this.image = this.getBackground(this.slot, board);
+        this.image = this.getBackground(this.slot, game_instance);
         let coords = this.toPoint();
-        this.damage_indicator = board.svg.text('0')
+        this.damage_indicator = game_instance.svg.text('0')
             .font({'fill': 'red', 'size': 18, 'opacity': 0})
             .attr('x', coords['x'] + hex_size * 4 / 3).attr('y', coords['y']);
 
@@ -70,13 +70,13 @@ class Hex {
         }
     }
 
-    getBackground(type, board) {
+    getBackground(type, game_instance) {
         /**
         * Gives hex background according to its type
         */
         switch (type) {
             case 'obstacle':
-                return board.svg.image('./src/assets/rock.jpg', hex_size * 2, hex_size * 2);
+                return game_instance.svg.image('./src/assets/rock.jpg', hex_size * 2, hex_size * 2);
             default:
                 return colors.tileBackground;
         }
@@ -105,25 +105,25 @@ class HexGrid {
     /**
     * Class for hexagonal grid
     */
-    constructor(board, radius, hexes) {
+    constructor(game_instance, board_data) {
         // debug variable
         this.show_coordinates = true;
 
-        this.board = board;
-        this.radius = radius;
+        this.game_instance = game_instance;
+        this.radius = board_data.radius;
         height_offset = Math.sqrt(3) * (this.radius - 1) * (hex_size + 1);
         width_offset = Math.floor(this.radius / 2) * (hex_size + 1) +
             2 * Math.floor((this.radius - 1) / 2) * (hex_size + 1) + (hex_size + 1) / 2;
         this.hexes = {};
-        var grid_width = Math.round(radius - 1) * (hex_size + 1) + 2 * radius * (hex_size + 1) + 1;
-        var grid_height = (2 * radius - 1) * Math.sqrt(3) * (hex_size + 1) + 1;
-        this.board.svg.size(grid_width, grid_height);
+        var grid_width = Math.round(this.radius - 1) * (hex_size + 1) + 2 * this.radius * (hex_size + 1) + 1;
+        var grid_height = (2 * this.radius - 1) * Math.sqrt(3) * (hex_size + 1) + 1;
+        this.game_instance.svg.size(grid_width, grid_height);
 
-        this.tiles = this.board.svg.group();
-        this.coordinates = this.board.svg.group();
+        this.tiles = this.game_instance.svg.group();
+        this.coordinates = this.game_instance.svg.group();
 
-        for (var hex_id in hexes) {
-            let hex = new Hex(hexes[hex_id], this.board);
+        for (var hex_id in board_data.hexes) {
+            let hex = new Hex(board_data.hexes[hex_id], this.game_instance);
             let {x, y} = hex.toPoint();
             let _polygon = this.tiles.polygon(corners)
                 .attr('id', hex_id)

@@ -93,6 +93,9 @@ class BaseUnitObject(InteractiveGameObject):
     def receive_damage(self, damage):
         self._object.health -= damage
 
+    def set_health(self, health):
+        self._object.health = health
+
 
 class Hero(BaseUnitObject):
 
