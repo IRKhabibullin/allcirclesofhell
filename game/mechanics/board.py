@@ -1,6 +1,6 @@
 from random import random
 from typing import TYPE_CHECKING, Dict, List
-from game.mechanics.constants import BOARD_RADIUS, slotEmpty
+from game.mechanics.constants import BOARD_RADIUS, slotEmpty, slotObstacle
 from game.mechanics.game_objects import Obstacle
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ class Board:
         (1, 0), (1, -1), (0, -1), (-1, 0), (-1, 1), (0, 1)
     ]
 
-    def __init__(self, radius: int = None, hexes: dict = None):
+    def __init__(self, radius: int = BOARD_RADIUS):
 
         def create_neighbors(_hex: Hex):
             """
@@ -68,21 +68,19 @@ class Board:
                 if self.add(new_hex):
                     create_neighbors(new_hex)
 
-        self.radius = radius or BOARD_RADIUS
+        self.radius = radius
         self.__hexes = {}
-        if not hexes:
-            # todo write algorithms for obstacles generating
-            start_hex = Hex(0, 0)
-            self.add(start_hex)
-            create_neighbors(start_hex)
-        else:
-            for _hex in hexes:
-                self.add(Hex(**_hex))
+        start_hex = Hex(0, 0)
+        self.add(start_hex)
+        create_neighbors(start_hex)
 
-    @classmethod
-    def load_state(cls, board_state: dict):
+    def load_state(self, hexes: list):
         """Load board from saved state"""
-        return cls(board_state['radius'], board_state['hexes'])
+        for _hex_data in hexes:
+            _hex = Hex(_hex_data['q'], _hex_data['r'])
+            if _hex_data['slot'] == slotObstacle:
+                _hex.slot = Obstacle()
+            self.add(_hex)
 
     def add(self, _hex: Hex) -> bool:
         """
@@ -136,7 +134,7 @@ class Board:
                 hexes_in_range[_hex_id] = self.get(_hex_id)
         return self.filter(hexes_in_range, **kwargs)
 
-    def filter(self, hexes: dict, **kwargs) -> Dict[str, Hex]:
+    def filter(self, hexes: Dict[str, Hex], **kwargs) -> Dict[str, Hex]:
         """Filter passed hexes by their slots"""
         for hex_id in list(hexes.keys()):
             if hex_id not in self.__hexes:
@@ -149,26 +147,19 @@ class Board:
 
     def place_game_object(self, game_object: 'BaseGameObject', hex_id: str):
         """Place game object in board according to it's position"""
-        if hex_id in self.__hexes:
-            _hex = self.__hexes[hex_id]
-            if _hex.slot != slotEmpty and _hex.slot != game_object:
-                raise RuntimeError('Cant move there. Hex already occupied')
-            if game_object.position:
-                game_object.position.slot = slotEmpty
-            game_object.position = _hex
-            _hex.slot = game_object
-        else:
-            raise RuntimeError('No such hex on board')
-
-    def get_object_position(self, game_object: 'BaseGameObject') -> Hex:
-        """Find hex that stores passed game object"""
-        for _hex in self.__hexes.values():
-            if _hex.slot == game_object:
-                return _hex
+        _hex = self.__hexes[hex_id]
+        if _hex.slot == game_object:
+            return
+        if _hex.slot != slotEmpty:
+            raise RuntimeError('Cant move there. Hex occupied by another game object')
+        # if game_object already placed somewhere, set it's previous position to empty
+        if game_object.position:
+            game_object.position.slot = slotEmpty
+        game_object.position = _hex
+        _hex.slot = game_object
 
     def clear_board(self):
         """Clear board from units, hero, game objects. Re-generate obstacles"""
-        # todo move obstacles generating into function and call it separately
         for _hex in self.__hexes.values():
             if _hex.slot != slotEmpty:
                 _hex.slot.position = None
@@ -176,6 +167,7 @@ class Board:
 
     def set_obstacles(self):
         """Generates obstacles on board"""
+        # todo write algorithms for obstacles generating
         for _hex in self.__hexes.values():
             if _hex.slot == slotEmpty:
                 if int(random() * 100) < OBSTACLE_CHANCE:

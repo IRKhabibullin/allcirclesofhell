@@ -2,23 +2,28 @@
     <div id="app">
         <main class="row">
             <aside class="col-2 px-0 ml-4 mt-2">
-                <div v-show="game_state != 'logged_out'">
-                    <label>{{ this.username }}</label>
-                    <b-button type="reset" variant="danger" v-on:click="setLoginState('logged_out')">Log out</b-button>
+                <div class="text-left" v-if="game_state != 'logged_out'">
+                    <b-dropdown id="dropdown-1" text="Settings" class="m-md-2">
+                        <b-dropdown-item disabled>{{ this.username }}</b-dropdown-item>
+                        <b-dropdown-divider v-if="game_state == 'game_loaded'"></b-dropdown-divider>
+                        <b-dropdown-item v-if="game_state == 'game_loaded'" v-on:click="setLoginState('logged_in')">Games list</b-dropdown-item>
+                        <b-dropdown-item v-if="game_state == 'game_loaded'" v-on:click="saveState">Save state</b-dropdown-item>
+                        <b-dropdown-item v-if="game_state == 'game_loaded'" v-on:click="loadState">Load state</b-dropdown-item>
+                        <b-dropdown-divider></b-dropdown-divider>
+                        <b-dropdown-item variant="danger" v-on:click="setLoginState('logged_out')">Log out</b-dropdown-item>
+                    </b-dropdown>
                 </div>
                 <LoginPanel @login_state_changed="setLoginState" v-if="game_state == 'logged_out'"></LoginPanel>
                 <GamesList
-                    @start_new="startNew"
-                    @game_selected="getGameById"
-                    v-else-if="game_state === 'logged_in'"
+                    @new_game="startNew"
+                    @start_round="startRound"
+                    @load_state="loadState"
+                    v-else-if="game_state == 'logged_in'"
                 ></GamesList>
-                <CharacterInfo :hero="game_info.hero" v-else-if="game_state == 'game_loaded'"></CharacterInfo>
-                <b-button type="reset" variant="danger" v-if="game_state == 'game_loaded'" v-on:click="setLoginState('logged_in')">Games list</b-button>
+                <CharacterInfo :hero="game_data.hero" v-else-if="game_state == 'game_loaded'"></CharacterInfo>
             </aside>
             <Playground
-                :units="game_info.units"
-                :board_data="game_info.board"
-                :hero="game_info.hero"
+                :initial_game_data="game_data"
                 v-if="game_state == 'game_loaded'"
                 class="col-10 px-0"
                 @game_action="requestAction"
@@ -49,7 +54,7 @@
                 //
                 game_state: 'logged_out',
                 username: '',
-                game_info: null
+                game_data: null
             }
         },
         components: {
@@ -64,19 +69,51 @@
                 this.game_state = state;
                 this.username = username;
             },
-            getGameById(game_id) {
+            startRound(game_id) {
                 this.$http.get(localStorage.getItem('endpoint') + '/games/' + game_id, {
                     headers: {
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }
                 })
                 .then(response => {
-                    this.game_info = response.data;
-                    console.log('New game', this.game_info);
+                    this.game_data = response.data;
+                    console.log('New game', this.game_data);
                     this.game_state = 'game_loaded';
                 })
                 .catch(error => {
                     console.log('Failed to get game', error);
+                })
+            },
+            saveState() {
+                let data = {
+                    'game_id': this.game_data.game_id
+                }
+                this.$http.post(localStorage.getItem('endpoint') + '/games/save_state/', data, {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {})
+                .catch(error => {
+                    console.log('Failed to save state', error);
+                })
+            },
+            loadState() {
+                let data = {
+                    'game_id': this.game_data.game_id
+                }
+                this.$http.post(localStorage.getItem('endpoint') + '/games/load_state/', data, {
+                    headers: {
+                       Authorization: 'Token ' + localStorage.getItem('token')
+                    }
+                })
+                .then(response => {
+                    this.game_data = response.data;
+                    console.log('Loaded state', this.game_data);
+                    this.$refs.playground.updateGame(response.data);
+                })
+                .catch(error => {
+                    console.log('Failed to load state', error);
                 })
             },
             startNew(newHeroName) {
@@ -91,8 +128,8 @@
                     }
                 })
                 .then(response => {
-                    this.game_info = response.data;
-                    console.log('New game', this.game_info);
+                    this.game_data = response.data;
+                    console.log('New game', this.game_data);
                     this.game_state = 'game_loaded';
                 })
                 .catch(error => {
@@ -100,14 +137,14 @@
                 })
             },
             requestAction(action_data) {
-                action_data['game_id'] = this.game_info.game_id
+                action_data['game_id'] = this.game_data.game_id
                 this.$http.post(localStorage.getItem('endpoint') + '/game/', action_data, {
                     headers: {
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }
                 })
                 .then(response => {
-                    this.game_info.hero = response.data.hero;
+                    this.game_data.hero = response.data.hero;
                     this.$refs.playground.handleAction(response.data);
                 })
                 .catch(error => {
@@ -116,7 +153,7 @@
             },
             closeGame() {
                 let data = {
-                    'game_id': this.game_info.game_id
+                    'game_id': this.game_data.game_id
                 }
                 this.$http.post(localStorage.getItem('endpoint') + '/games/close_game/', data, {
                     headers: {

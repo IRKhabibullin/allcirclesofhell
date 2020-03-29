@@ -86,7 +86,7 @@ class GameInstanceSerializer(serializers.Serializer):
         return units
 
     def game_board(self, game):
-        return game.board.get_state()
+        return game._board.get_state()
 
     def game_round(self, game):
         return game._game.round

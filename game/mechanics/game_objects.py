@@ -29,7 +29,7 @@ class BaseUnitObject(InteractiveGameObject):
         super().__init__(object_model, **kwargs)
         self.moves: list = []
         self.attack_hexes: list = []
-        self.priority_target: str = slotHero
+        self.enemy_target: str = slotHero
         self.actions = [
             'move',
             'attack',
@@ -86,12 +86,15 @@ class BaseUnitObject(InteractiveGameObject):
         best_target: Hex = available_actions[best_action][0]
         for action, action_targets in available_actions.items():
             for target in action_targets:
-                if str(target.slot) == self.priority_target:
+                if str(target.slot) == self.enemy_target:
                     best_action, best_target = action, target
         return best_action, best_target.id
 
     def receive_damage(self, damage):
         self._object.health -= damage
+
+    def set_health(self, health):
+        self._object.health = health
 
 
 class Hero(BaseUnitObject):

@@ -10,19 +10,19 @@ const colors = {
     'target': '#0f7cdb'
 }
 
-class Board {
+class GameInstance {
     /**
     * Class to work with game board
     */
-    constructor(component, svg_field, board_data, units, hero_data) {
+    constructor(component, svg_field, game_data) {
         this.component = component;
         this.svg = svg_field;
-        this.grid = new HexGrid(this, board_data.radius, board_data.hexes);
+        this.grid = new HexGrid(this, game_data.board);
 
-        this.hero = new Hero(this, hero_data);
+        this.hero = new Hero(this, game_data.hero);
         this.units = {};
-        for (var unit_id in units) {
-            this.units[unit_id] = new Unit(this, units[unit_id]);
+        for (var unit_id in game_data.units) {
+            this.units[unit_id] = new Unit(this, game_data.units[unit_id]);
         }
 
         this.actionManager = new ActionManager(this);
@@ -102,4 +102,4 @@ class Board {
     }
 }
 
-export default Board
+export default GameInstance
