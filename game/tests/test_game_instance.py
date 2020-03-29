@@ -1,12 +1,11 @@
 """Tests for game instance"""
-from unittest import TestCase
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 
 from game.mechanics.constants import slotUnit
 from game.mechanics.game_instance import GameInstance
-from game.models import HeroModel, GameModel
+from game.models import GameModel
 
 
 class GameInstanceTestCase(TestCase):

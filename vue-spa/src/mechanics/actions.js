@@ -1,4 +1,5 @@
 import anime from 'animejs'
+import {Hero} from './game_objects';
 
 class ActionManager {
     constructor(game_instance) {
@@ -77,6 +78,10 @@ class ActionManager {
                 actionHandler: (source, actionSteps) => {
                     let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
                     source.move(target_hex);
+                    if (source instanceof Hero && 'path' in this.actionData) {
+                        let passed_hex = this.actionData.path.pop(this.actionData.path.length - 1);
+                        passed_hex.polygon.classList.remove('path');
+                    }
                 }
             },
             attack: {
@@ -110,17 +115,17 @@ class ActionManager {
                     hex.polygon.classList.add('availableAttackTarget');
                 },
                 actionHandler: (source, actionSteps) => {
-                    console.log('actionSteps:', actionSteps);
                     let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
-                    console.log('hexes:', source.hex, 'and', target_hex);
                     let source_point = source.hex.toPoint();
                     let target_point = target_hex.toPoint();
                     source.image
                         .animate(100, '-', source.animation_delay).move(target_point.x, target_point.y)
                         .animate(100, '-').move(source_point.x, source_point.y);
-                    let target = this.game_instance.getUnitByHex(target_hex);
-                    if (!!target) {
-                        target.getDamage(actionSteps[0].damage);
+                    if ('damage' in actionSteps[0]) {
+                        let target = this.game_instance.getUnitByHex(target_hex);
+                        if (!!target) {
+                            target.getDamage(actionSteps[0].damage);
+                        }
                     }
                 }
             },
@@ -137,11 +142,12 @@ class ActionManager {
                     let target_point = target_hex.toPoint();
                     source.range_weapon.move(source_point.x + 30, source_point.y + 30).fill({'opacity': 1})
                         .animate(150).fill({'opacity': 0}).move(target_point.x + 30, target_point.y + 30);
-                    target_hex.damage_indicator.text(actionSteps[0].damage.toString());
-                    target_hex.damage_indicator
-                        .animate(100, '-', source.animation_delay).attr({'opacity': 1})
-                        .animate(1000).font({'opacity': 0}).translate(0, -30)
-                        .animate(10).translate(0, 0);
+                    if ('damage' in actionSteps[0]) {
+                        let target = this.game_instance.getUnitByHex(target_hex);
+                        if (!!target) {
+                            target.getDamage(actionSteps[0].damage);
+                        }
+                    }
                 }
             },
 //            spells
@@ -213,9 +219,11 @@ class ActionManager {
                             duration: 100,
                             opacity: 0
                         });
-                        let unit = this.game_instance.getUnitByHex(hex);
-                        if (!!unit) {
-                            unit.getDamage(actionStep.damage);
+                        if ('damage' in actionStep) {
+                            let unit = this.game_instance.getUnitByHex(hex);
+                            if (!!unit) {
+                                unit.getDamage(actionStep.damage);
+                            }
                         }
                     }
                 }
@@ -253,7 +261,6 @@ class ActionManager {
                     this.game_instance.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
                 },
                 actionHandler: (source, actionSteps) => {
-                    console.log('action steps', actionSteps);
                     const angles = {
                         '1;-1': 60,
                         '1;0': 120,

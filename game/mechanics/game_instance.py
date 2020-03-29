@@ -163,33 +163,36 @@ class GameInstance:
 
     # region: game api
     def get_object_by_position(self, hex_id: str) -> BaseGameObject:
-        """Get object position"""
-        _hex = self._board.get(hex_id)
-        if _hex:
-            return _hex.slot
+        """Get object position. If no such hex, KeyError raised"""
+        return self._board[hex_id].slot
 
     def move_object(self, game_object: BaseGameObject, new_position: str):
         """Moves object from <target_hex> to <new_position>"""
         self._board.place_game_object(game_object, new_position)
 
-    def deal_damage(self, target_hex: str, damage: int):
+    def deal_damage(self, target_hex: str, damage: int) -> int:
         """Deal <damage> to object in <target_hex>"""
         # if will add damage types, then <damage> arg must be a DamageInstance class, or something
-        target = self._board.get(target_hex).slot
-        if isinstance(target, BaseUnitObject):
-            target.receive_damage(damage)
-            if target.health <= 0:
-                self.destroy_unit(target)
+        try:
+            target = self._board.get(target_hex).slot
+            if isinstance(target, BaseUnitObject):
+                target.receive_damage(damage)
+                if target.health <= 0:
+                    self.destroy_unit(target)
+                return damage
+        except Exception:
+            # if for some reason it failed, then just do nothing (as if damage source hit the air)
+            print(f'Damage dealing at target {target_hex} failed')
 
     def destroy_unit(self, target: BaseUnitObject):
         """Remove unit from game. Called on units death"""
-        self._board.get_object_position(target).slot = slotEmpty
+        target.position.slot = slotEmpty
         if isinstance(target, Unit):
             del self._units[target.pk]
 
     def distance(self, source: Hex, target_hex: str) -> int:
-        """Get distance between two hexes"""
-        return self._board.distance(source, self._board.get(target_hex))
+        """Get distance between two hexes. If no target_hex on board, then exception raised"""
+        return self._board.distance(source, self._board[target_hex])
 
     def get_hexes_in_range(self, start_hex: Hex, _range: int, **kwargs) -> Dict[str, Hex]:
         """
