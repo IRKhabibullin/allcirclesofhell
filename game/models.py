@@ -22,25 +22,25 @@ class HandbookModel(models.Model):
     #     return
 
 
-class Effect(HandbookModel):
+class EffectModel(HandbookModel):
     """Table listing all effects available in game"""
     description = models.TextField(default='Not provided')
     # trigger = models.?
 
 
-class Skill(HandbookModel):
+class SkillModel(HandbookModel):
     """Table listing all skills available in game"""
     requirements = models.ManyToManyField('self', blank=True)
-    effects = models.ManyToManyField(Effect, blank=True)
+    effects = models.ManyToManyField(EffectModel, blank=True)
     description = models.TextField(default='Not provided')
     # school = models.IntegerField(default=0) it must be enum field
     img_path = models.TextField(default='./src/assets/skill.jpeg')
 
 
-class Item(HandbookModel):
+class ItemModel(HandbookModel):
     """Table listing all items available in game"""
     cost = models.IntegerField()
-    effects = models.ManyToManyField(Effect, blank=True)
+    effects = models.ManyToManyField(EffectModel, blank=True)
     description = models.TextField(default='Not provided')
     img_path = models.TextField(default='./src/assets/item.jpeg')
 
@@ -55,19 +55,19 @@ class ItemEffect(models.Model):
         return f'{self.item.code_name}.{self.effect.code_name}'
 
 
-class Spell(HandbookModel):
+class SpellModel(HandbookModel):
     """Table listing all spells available in game"""
     cost = models.IntegerField()
-    effects = models.ManyToManyField(Effect, through='SpellEffect', through_fields=('spell', 'effect'), blank=True)
+    effects = models.ManyToManyField(EffectModel, through='SpellEffectModel', through_fields=('spell', 'effect'), blank=True)
     description = models.TextField(default='Not provided')
     # school = models.IntegerField(default=0) it must be enum field
     img_path = models.TextField(default='./src/assets/spell.jpeg')
 
 
-class SpellEffect(models.Model):
+class SpellEffectModel(models.Model):
     """Intermediary table to bind spells and effects"""
-    spell = models.ForeignKey(Spell, on_delete=models.CASCADE)
-    effect = models.ForeignKey(Effect, on_delete=models.CASCADE)
+    spell = models.ForeignKey(SpellModel, on_delete=models.CASCADE)
+    effect = models.ForeignKey(EffectModel, on_delete=models.CASCADE)
     value = models.FloatField(default=0.0)
 
     def __str__(self):
@@ -82,15 +82,15 @@ class GameStructure(HandbookModel):
     assortment = []
 
 
-class BaseUnit(models.Model):
+class BaseUnitModel(models.Model):
     """Base model for units, heroes etc"""
     health = models.IntegerField(default=50)
     damage = models.IntegerField(default=3)
     attack_range = models.IntegerField(default=1)
     move_range = models.IntegerField(default=1)
     armor = models.IntegerField(default=2)
-    skills = models.ManyToManyField(Skill, blank=True)
-    spells = models.ManyToManyField(Spell, blank=True)
+    skills = models.ManyToManyField(SkillModel, blank=True)
+    spells = models.ManyToManyField(SpellModel, blank=True)
     img_path = models.TextField(default='')
     position = None
     moves = []
@@ -100,7 +100,7 @@ class BaseUnit(models.Model):
         abstract = True
 
 
-class Unit(HandbookModel, BaseUnit):
+class UnitModel(HandbookModel, BaseUnitModel):
     """
     There could be several identical units in game, but none of them should be saved to db
 
@@ -112,11 +112,11 @@ class Unit(HandbookModel, BaseUnit):
     img_path = models.TextField(default='./src/assets/unit.jpeg')
 
 
-class Hero(BaseUnit):
+class HeroModel(BaseUnitModel):
     """Main character in game"""
     name = models.CharField(max_length=50)
-    weapon = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_weapon', null=True, blank=True)
-    suit = models.ForeignKey(Item, on_delete=models.CASCADE, related_name='hero_suit', null=True, blank=True)
+    weapon = models.ForeignKey(ItemModel, on_delete=models.CASCADE, related_name='hero_weapon', null=True, blank=True)
+    suit = models.ForeignKey(ItemModel, on_delete=models.CASCADE, related_name='hero_suit', null=True, blank=True)
     img_path = models.TextField(default='./src/assets/board_hero_sized.png')
     # school = models.IntegerField(default=0) it must be enum field
 
@@ -128,13 +128,7 @@ class GameModel(models.Model):
     """Game data storing model"""
     created = models.DateTimeField(default=now)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    hero = models.ForeignKey(Hero, on_delete=models.CASCADE, null=True, blank=True)
+    hero = models.ForeignKey(HeroModel, on_delete=models.CASCADE, null=True, blank=True)
     round = models.IntegerField(default=1)  # round in the game
     # jsoned state of game. Need to save board state, shops assortment and so on
     state = models.TextField(default='{}')
-
-    # def save_state(self):
-
-    # def save(self, *args, **kwargs):
-    #     self.save_state()
-    #     super().save(*args, **kwargs)

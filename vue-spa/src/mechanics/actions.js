@@ -1,37 +1,34 @@
 import anime from 'animejs'
+import {Hero} from './game_objects';
 
 class ActionManager {
-    constructor(board) {
-        this.board = board;
-//        this.actionParams = {
-////        some values, passed in constructor, for example
-//            'length_of_path_of_fire': 4
-//        }
+    constructor(game_instance) {
+        this.game_instance = game_instance;
         this.currentAction = null;
         this.actionData = {};
-        this.animation_elements = this.board.svg.group();
+        this.animation_elements = this.game_instance.svg.group();
 
         this.actions = {
             move: {
                 set: () => {
                     this.actionData.path = [];
-                    this.board.hero.updateHandler = this.actions.move.heroUpdateHandler;
-                    for (var hex_id in this.board.grid.hexes) {
-                        this.board.grid.hexes[hex_id].clickHandler = this.actions.move.hexClickHandler;
+                    this.game_instance.hero.updateHandler = this.actions.move.heroUpdateHandler;
+                    for (var hex_id in this.game_instance.grid.hexes) {
+                        this.game_instance.grid.hexes[hex_id].clickHandler = this.actions.move.hexClickHandler;
                     }
                     for (var structure_id in this.board.structures) {
                         this.board.structures[structure_id].clickTargetHandler = this.actions.move.structureClickHandler;
                     }
-                    for (var unit_id in this.board.units) {
-                        this.board.units[unit_id].clickTargetHandler = this.actions.move.unitClickHandler;
+                    for (var unit_id in this.game_instance.units) {
+                        this.game_instance.units[unit_id].clickTargetHandler = this.actions.move.unitClickHandler;
                     }
                 },
                 drop: () => {
-                    this.board.hero.updateHandler = null;
+                    this.game_instance.hero.updateHandler = null;
                     this.actions.move.resetPath();
                 },
                 buildPath: destination => {
-                    this.actionData.path = this.board.grid.findPath(this.board.hero.hex, destination);
+                    this.actionData.path = this.game_instance.grid.findPath(this.game_instance.hero.hex, destination);
                     this.actionData.path.forEach(hex => {
                         hex.polygon.classList.add('path');
                     })
@@ -51,18 +48,18 @@ class ActionManager {
                     if (this.currentAction != 'move') {
                         this.changeAction('move');
                     }
-                    if (this.board.grid.distance(hex, this.board.hero.hex) <= this.board.hero.move_range) {
+                    if (this.game_instance.grid.distance(hex, this.game_instance.hero.hex) <= this.game_instance.hero.move_range) {
                         this.actions.move.resetPath();
-                        this.board.component.requestAction({'action': 'move', 'target_hex': hex.q + ';' + hex.r});
+                        this.game_instance.component.requestAction({'action': 'move', 'target_hex': hex.q + ';' + hex.r});
                     } else {
                         this.actions.move.goLongPath(hex);
                     }
                 },
                 unitClickHandler: unit => {
-                    if (this.board.grid.distance(unit.hex, this.board.hero.hex) <= this.board.hero.attack_range) {
-                        this.board.component.requestAction({'action': 'attack', 'target_unit': unit.pk});
-                    } else if (this.board.grid.distance(unit.hex, this.board.hero.hex) <= this.board.hero.attack_range + 1) {
-                        this.board.component.requestAction({'action': 'range_attack', 'target_unit': unit.pk});
+                    if (this.game_instance.grid.distance(unit.hex, this.game_instance.hero.hex) <= this.game_instance.hero.attack_range) {
+                        this.game_instance.component.requestAction({'action': 'attack', 'target_hex': unit.hex.q + ';' + unit.hex.r});
+                    } else if (this.game_instance.grid.distance(unit.hex, this.game_instance.hero.hex) <= this.game_instance.hero.attack_range + 1) {
+                        this.game_instance.component.requestAction({'action': 'range_attack', 'target_hex': unit.hex.q + ';' + unit.hex.r});
                     } else {
                         this.actions.move.goLongPath(unit.hex);
                     }
@@ -86,22 +83,30 @@ class ActionManager {
                             this.actions.move.buildPath(hex);
                         } else {
                             let hex_in_path = this.actionData.path[this.actionData.path.length - 1];
-                            this.board.component.requestAction({'action': 'move',
+                            this.game_instance.component.requestAction({'action': 'move',
                                                                 'target_hex': hex_in_path.q + ';' + hex_in_path.r});
                         }
                     } else {
                         this.actions.move.buildPath(hex);
                     }
+                },
+                actionHandler: (source, actionSteps) => {
+                    let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
+                    source.move(target_hex);
+                    if (source instanceof Hero && 'path' in this.actionData) {
+                        let passed_hex = this.actionData.path.pop(this.actionData.path.length - 1);
+                        passed_hex.polygon.classList.remove('path');
+                    }
                 }
             },
             attack: {
                 set: () => {
-                    this.actions.attack.setByAttackHexes(this.board.hero.attack_hexes);
+                    this.actions.attack.setByAttackHexes(this.game_instance.hero.attack_hexes);
                 },
                 setByAttackHexes: attackHexes => {
                     this.actionData.target_units = [];
-                    for (var unit_id in this.board.units) {
-                        let unit = this.board.units[unit_id];
+                    for (var unit_id in this.game_instance.units) {
+                        let unit = this.game_instance.units[unit_id];
                         if (attackHexes.includes(unit.hex.q + ';' + unit.hex.r)) {
                             this.actionData.target_units.push(unit);
                             unit.hex.polygon.classList.add('availableAttackTarget');
@@ -123,21 +128,48 @@ class ActionManager {
                 unitMouseoutHandler: hex => {
                     hex.polygon.classList.remove('attackTarget');
                     hex.polygon.classList.add('availableAttackTarget');
+                },
+                actionHandler: (source, actionSteps) => {
+                    let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
+                    let source_point = source.hex.toPoint();
+                    let target_point = target_hex.toPoint();
+                    source.image
+                        .animate(100, '-', source.animation_delay).move(target_point.x, target_point.y)
+                        .animate(100, '-').move(source_point.x, source_point.y);
+                    if ('damage' in actionSteps[0]) {
+                        let target = this.game_instance.getUnitByHex(target_hex);
+                        if (!!target) {
+                            target.getDamage(actionSteps[0].damage);
+                        }
+                    }
                 }
             },
             range_attack: {
                 set: () => {
-                    this.actions.attack.setByAttackHexes(this.board.hero.range_attack_hexes);
+                    this.actions.attack.setByAttackHexes(this.game_instance.hero.range_attack_hexes);
                 },
                 drop: () => {
                     this.actions.attack.drop()
+                },
+                actionHandler: (source, actionSteps) => {
+                    let source_point = source.hex.toPoint();
+                    let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
+                    let target_point = target_hex.toPoint();
+                    source.range_weapon.move(source_point.x + 30, source_point.y + 30).fill({'opacity': 1})
+                        .animate(150).fill({'opacity': 0}).move(target_point.x + 30, target_point.y + 30);
+                    if ('damage' in actionSteps[0]) {
+                        let target = this.game_instance.getUnitByHex(target_hex);
+                        if (!!target) {
+                            target.getDamage(actionSteps[0].damage);
+                        }
+                    }
                 }
             },
 //            spells
-            'path_of_fire': {
+            path_of_fire: {
                 set: () => {
-                    this.setTargets(this.board.grid.getHexesInRange(this.board.hero.hex,
-                                                                    this.board.hero.spells[this.currentAction].radius,
+                    this.setTargets(this.game_instance.grid.getHexesInRange(this.game_instance.hero.hex,
+                                                                    this.game_instance.hero.spells[this.currentAction].radius,
                                                                     ['empty', 'unit']));
                     this.actionData.path = [];
                 },
@@ -147,12 +179,12 @@ class ActionManager {
                     });
                 },
                 mouseover: hex => {
-                    let dq = hex.q - this.board.hero.hex.q;
-                    let dr = hex.r - this.board.hero.hex.r;
-                    for (var i = 1; i < this.board.hero.spells[this.currentAction].path_length + 1; i++) {
-                        let current_hex = this.board.grid.getHexByCoords(this.board.hero.hex.q + dq * i,
-                                                                         this.board.hero.hex.r + dr * i);
-                        if (current_hex === undefined || current_hex.occupied_by == 'obstacle')
+                    let dq = hex.q - this.game_instance.hero.hex.q;
+                    let dr = hex.r - this.game_instance.hero.hex.r;
+                    for (var i = 1; i < this.game_instance.hero.spells[this.currentAction].path_length + 1; i++) {
+                        let current_hex = this.game_instance.grid.getHexByCoords(this.game_instance.hero.hex.q + dq * i,
+                                                                         this.game_instance.hero.hex.r + dr * i);
+                        if (current_hex === undefined || current_hex.slot == 'obstacle')
                             break;
                         this.actionData.path.push(current_hex);
                         current_hex.polygon.classList.add('secondaryTarget');
@@ -165,20 +197,21 @@ class ActionManager {
                     this.actionData.path = [];
                 },
                 hexClickHandler: hex => {
-                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
+                    this.game_instance.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
                 },
                 unitClickHandler: unit => {
-                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
+                    this.game_instance.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
                 },
-                actionHandler: actionData => {
+                actionHandler: (source, actionSteps) => {
                     let animation = anime.timeline({
                         complete: (anim) => {
                             this.animation_elements.clear();
                         }
                     });
 
-                    for (var i = 0; i < actionData.target_hexes.length; i++) {
-                        let hex = this.board.grid.hexes[actionData.target_hexes[i]];
+                    for (var i = 0; i < actionSteps.length; i++) {
+                        let actionStep = actionSteps[i];
+                        let hex = this.game_instance.grid.hexes[actionStep.target_hex];
                         let {x, y} = hex.toPoint();
                         let explosion = this.animation_elements.image('./src/assets/path_of_fire_explosion.png', 60, 60);
                         animation.add({
@@ -201,15 +234,18 @@ class ActionManager {
                             duration: 100,
                             opacity: 0
                         });
-                    }
-                    for (var unit_id in actionData.target_units) {
-                        this.board.units[unit_id].getDamage(actionData.target_units[unit_id].damage);
+                        if ('damage' in actionStep) {
+                            let unit = this.game_instance.getUnitByHex(hex);
+                            if (!!unit) {
+                                unit.getDamage(actionStep.damage);
+                            }
+                        }
                     }
                 }
             },
             'shield_bash': {
                 set: () => {
-                    this.setTargets(this.board.grid.getHexesInRange(this.board.hero.hex, 1, ['empty', 'unit', 'obstacle']));
+                    this.setTargets(this.game_instance.grid.getHexesInRange(this.game_instance.hero.hex, 1, ['empty', 'unit', 'obstacle']));
                     this.actionData.hexes_to_bash = [];
                 },
                 drop: () => {
@@ -219,9 +255,9 @@ class ActionManager {
                 },
                 mouseover: hex => {
                     this.actionData.hexes_to_bash = [];
-                    this.board.grid.getHexesInRange(hex, 1).filter(x => this.actionData.target_hexes.includes(x)).forEach(hex_id => {
-                        let _hex = this.board.grid.hexes[hex_id];
-                        if (this.board.hero.hex != _hex) {
+                    this.game_instance.grid.getHexesInRange(hex, 1).filter(x => this.actionData.target_hexes.includes(x)).forEach(hex_id => {
+                        let _hex = this.game_instance.grid.hexes[hex_id];
+                        if (this.game_instance.hero.hex != _hex) {
                             this.actionData.hexes_to_bash.push(_hex);
                             _hex.polygon.classList.add('secondaryTarget');
                         }
@@ -234,12 +270,12 @@ class ActionManager {
                     this.actionData.hexes_to_bash = [];
                 },
                 hexClickHandler: hex => {
-                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
+                    this.game_instance.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
                 },
                 unitClickHandler: unit => {
-                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
+                    this.game_instance.component.requestAction({'action': this.currentAction, 'target_hex': unit.hex.polygon.id});
                 },
-                actionHandler: actionData => {
+                actionHandler: (source, actionSteps) => {
                     const angles = {
                         '1;-1': 60,
                         '1;0': 120,
@@ -247,14 +283,27 @@ class ActionManager {
                         '-1;1': 240,
                         '-1;0': 300
                     }
-                    let target = actionData.target_hex.split(';');
-                    let {x, y} = this.board.hero.hex.toPoint();
-                    target[0] -= this.board.hero.hex.q;
-                    target[1] -= this.board.hero.hex.r;
-                    let angle = angles[target[0] + ';' + target[1]];
-                    for (var unit_id in actionData.target_units) {
-                        this.board.units[unit_id].getDamage(actionData.target_units[unit_id].damage);
+                    let main_target = null;
+                    for (var i = 0; i < actionSteps.length; i++) {
+                        let actionStep = actionSteps[i];
+                        let _hex = this.game_instance.grid.hexes[actionStep.target_hex];
+                        let unit = this.game_instance.getUnitByHex(_hex);
+                        if (!!unit) {
+                            unit.getDamage(actionStep.damage);
+                            if (!!actionStep.pushed_to) {
+                                unit.move(this.game_instance.grid.hexes[actionStep.pushed_to]);
+                            }
+                        }
+                        if (actionStep.main_target == true) {
+                            main_target = actionStep.target_hex;
+                        }
                     }
+
+                    let target = main_target.split(';');
+                    let {x, y} = source.hex.toPoint();
+                    target[0] -= source.hex.q;
+                    target[1] -= source.hex.r;
+                    let angle = angles[target[0] + ';' + target[1]];
                     let cone = this.animation_elements.image('./src/assets/bash_wave.png', 60, 60)
                     let animation = anime.timeline({
                         complete: (anim) => {
@@ -288,7 +337,7 @@ class ActionManager {
             },
             'blink': {
                 set: () => {
-                    this.setTargets(this.board.grid.getHexesInRange(this.board.hero.hex, 3, ['empty']), false);
+                    this.setTargets(this.game_instance.grid.getHexesInRange(this.game_instance.hero.hex, 3, ['empty']), false);
                 },
                 drop: () => {
                 },
@@ -300,10 +349,12 @@ class ActionManager {
                 },
                 hexClickHandler: hex => {
                     this.actionData.destination = hex;
-                    this.board.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
+                    this.game_instance.component.requestAction({'action': this.currentAction, 'target_hex': hex.polygon.id});
                     hex.polygon.classList.remove('secondaryTarget');
                 },
-                actionHandler: actionData => {
+                actionHandler: (source, actionSteps) => {
+                    let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
+                    source.move(target_hex, 10);
                 }
             }
         }
@@ -328,16 +379,16 @@ class ActionManager {
         }
     }
 
-    handleAction(actionData) {
-        if ('actionHandler' in this.actions[actionData.action]) {
-            this.actions[actionData.action].actionHandler(actionData);
+    handleAction(actionName, source, actionSteps) {
+        if ('actionHandler' in this.actions[actionName]) {
+            this.actions[actionName].actionHandler(source, actionSteps);
         }
     }
 
     commonDrop() {
         if ('target_hexes' in this.actionData) {
             this.actionData.target_hexes.forEach(hex_id => {
-                let hex = this.board.grid.hexes[hex_id];
+                let hex = this.game_instance.grid.hexes[hex_id];
                 hex.polygon.classList.remove('spellTarget');
                 hex.overTargetHandler = null;
                 hex.outTargetHandler = null;
@@ -356,7 +407,7 @@ class ActionManager {
     setTargets(hexes, includeUnits=true) {
         this.actionData.target_hexes = hexes;
         this.actionData.target_hexes.forEach(hex_id => {
-            let hex = this.board.grid.hexes[hex_id];
+            let hex = this.game_instance.grid.hexes[hex_id];
             hex.polygon.classList.add('spellTarget');
             hex.overTargetHandler = this.actions[this.currentAction].mouseover;
             hex.outTargetHandler = this.actions[this.currentAction].mouseout;
@@ -364,8 +415,8 @@ class ActionManager {
         });
         if (includeUnits) {
             this.actionData.target_units = [];
-            for (var unit_id in this.board.units) {
-                let unit = this.board.units[unit_id];
+            for (var unit_id in this.game_instance.units) {
+                let unit = this.game_instance.units[unit_id];
                 if (this.actionData.target_hexes.includes(unit.hex.q + ';' + unit.hex.r)) {
                     this.actionData.target_units.push(unit);
                     unit.overTargetHandler = this.actions[this.currentAction].mouseover;

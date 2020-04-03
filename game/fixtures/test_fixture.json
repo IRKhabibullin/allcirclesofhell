@@ -36,7 +36,7 @@
     }
   },
   {
-    "model": "game.effect",
+    "model": "game.effectmodel",
     "pk": 1,
     "fields": {
       "code_name": "damage",
@@ -45,7 +45,7 @@
     }
   },
   {
-    "model": "game.effect",
+    "model": "game.effectmodel",
     "pk": 2,
     "fields": {
       "code_name": "radius",
@@ -54,7 +54,7 @@
     }
   },
   {
-    "model": "game.effect",
+    "model": "game.effectmodel",
     "pk": 3,
     "fields": {
       "code_name": "path_length",
@@ -63,7 +63,7 @@
     }
   },
   {
-    "model": "game.item",
+    "model": "game.itemmodel",
     "pk": 1,
     "fields": {
       "code_name": null,
@@ -75,7 +75,7 @@
     }
   },
   {
-    "model": "game.item",
+    "model": "game.itemmodel",
     "pk": 2,
     "fields": {
       "code_name": null,
@@ -87,7 +87,7 @@
     }
   },
   {
-    "model": "game.spell",
+    "model": "game.spellmodel",
     "pk": 1,
     "fields": {
       "code_name": "path_of_fire",
@@ -98,7 +98,7 @@
     }
   },
   {
-    "model": "game.spell",
+    "model": "game.spellmodel",
     "pk": 2,
     "fields": {
       "code_name": "shield_bash",
@@ -109,7 +109,7 @@
     }
   },
   {
-    "model": "game.spell",
+    "model": "game.spellmodel",
     "pk": 3,
     "fields": {
       "code_name": "blink",
@@ -120,7 +120,7 @@
     }
   },
   {
-    "model": "game.spelleffect",
+    "model": "game.spelleffectmodel",
     "pk": 1,
     "fields": {
       "spell": 1,
@@ -129,7 +129,7 @@
     }
   },
   {
-    "model": "game.spelleffect",
+    "model": "game.spelleffectmodel",
     "pk": 2,
     "fields": {
       "spell": 1,
@@ -138,7 +138,7 @@
     }
   },
   {
-    "model": "game.spelleffect",
+    "model": "game.spelleffectmodel",
     "pk": 3,
     "fields": {
       "spell": 1,
@@ -147,7 +147,7 @@
     }
   },
   {
-    "model": "game.spelleffect",
+    "model": "game.spelleffectmodel",
     "pk": 4,
     "fields": {
       "spell": 3,
@@ -156,7 +156,7 @@
     }
   },
   {
-    "model": "game.spelleffect",
+    "model": "game.spelleffectmodel",
     "pk": 5,
     "fields": {
       "spell": 2,
@@ -165,7 +165,7 @@
     }
   },
   {
-    "model": "game.spelleffect",
+    "model": "game.spelleffectmodel",
     "pk": 6,
     "fields": {
       "spell": 2,
@@ -174,7 +174,7 @@
     }
   },
   {
-    "model": "game.unit",
+    "model": "game.unitmodel",
     "pk": 1,
     "fields": {
       "code_name": null,
@@ -191,7 +191,7 @@
     }
   },
   {
-    "model": "game.unit",
+    "model": "game.unitmodel",
     "pk": 2,
     "fields": {
       "code_name": null,
@@ -208,7 +208,7 @@
     }
   },
   {
-    "model": "game.hero",
+    "model": "game.heromodel",
     "pk": 1,
     "fields": {
       "health": 50,
@@ -225,7 +225,7 @@
     }
   },
   {
-    "model": "game.hero",
+    "model": "game.heromodel",
     "pk": 2,
     "fields": {
       "health": 73,
@@ -264,7 +264,7 @@
       "user": 2,
       "hero": 2,
       "round": 4,
-      "state": "{}"
+      "state": "{\"hero\": {\"health\": 67, \"position\": \"0;3\"}, \"hexes\": [{\"q\": 3, \"r\": 0, \"slot\": \"obstacle\"}, {\"q\": 5, \"r\": -5, \"slot\": \"obstacle\"}, {\"q\": 1, \"r\": -3, \"slot\": \"obstacle\"}, {\"q\": 0, \"r\": -2, \"slot\": \"obstacle\"}, {\"q\": -1, \"r\": -1, \"slot\": \"obstacle\"}, {\"q\": -3, \"r\": -1, \"slot\": \"obstacle\"}, {\"q\": -1, \"r\": 0, \"slot\": \"obstacle\"}, {\"q\": 1, \"r\": 1, \"slot\": \"obstacle\"}, {\"q\": 3, \"r\": 1, \"slot\": \"obstacle\"}, {\"q\": 3, \"r\": 2, \"slot\": \"obstacle\"}, {\"q\": -4, \"r\": 1, \"slot\": \"obstacle\"}, {\"q\": 1, \"r\": 3, \"slot\": \"obstacle\"}, {\"q\": -3, \"r\": 4, \"slot\": \"obstacle\"}, {\"q\": 0, \"r\": 5, \"slot\": \"obstacle\"}], \"units\": [{\"level\": 2, \"health\": 25, \"position\": \"0;1\"}, {\"level\": 1, \"health\": 10, \"position\": \"0;0\"}, {\"level\": 1, \"health\": 10, \"position\": \"-1;4\"}, {\"level\": 1, \"health\": 10, \"position\": \"0;4\"}]}"
     }
   }
 ]

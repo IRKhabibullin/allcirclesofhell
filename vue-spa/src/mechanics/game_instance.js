@@ -10,23 +10,23 @@ const colors = {
     'target': '#0f7cdb'
 }
 
-class Board {
+class GameInstance {
     /**
     * Class to work with game board
     */
-    constructor(component, svg_field, board_data, units, structures, hero_data) {
+    constructor(component, svg_field, game_data) {
         this.component = component;
         this.svg = svg_field;
-        this.grid = new HexGrid(this, board_data.radius, board_data.hexes);
+        this.grid = new HexGrid(this, game_data.board);
 
-        this.hero = new Hero(this, hero_data);
+        this.hero = new Hero(this, game_data.hero);
         this.units = {};
         this.structures = {};
-        for (var structure_id in structures) {
-            this.structures[structure_id] = new Structure(this, structures[structure_id]);
+        for (var structure_id in game_data.structures) {
+            this.structures[structure_id] = new Structure(this, game_data.structures[structure_id]);
         }
-        for (var unit_id in units) {
-            this.units[unit_id] = new Unit(this, units[unit_id]);
+        for (var unit_id in game_data.units) {
+            this.units[unit_id] = new Unit(this, game_data.units[unit_id]);
         }
 
         this.actionManager = new ActionManager(this);
@@ -37,14 +37,15 @@ class Board {
         this.altPressed = false;
     }
 
-    handleAction(actionData) {
-        console.log('actionData', actionData);
-        if (actionData.action_data.allowed) {
-            this.grid.update_hexes(actionData.board.hexes);
-            this.actionManager.handleAction(actionData.action_data);
+    handleAction(response) {
+        console.log('response', response);
+        if (response.action_data.state != 'success') {
             this.actionManager.changeAction('move');
-            this.hero.update(actionData.hero, actionData.action_data);
-            this.update_units(actionData.units, actionData.units_actions);
+        } else {
+            this.grid.update_hexes(response.board.hexes);
+            this.hero.update(response.hero, response.action_data.hero_actions);
+            this.update_units(response.units, response.action_data.units_actions);
+            this.actionManager.changeAction('move');
         }
     }
 
@@ -53,17 +54,28 @@ class Board {
         let units_to_update = Object.keys(this.units).filter(u => u in new_units);
         let units_to_remove = Object.keys(this.units).filter(u => !(u in new_units));
 
-        units_to_update.forEach(unit_id => {
-            this.units[unit_id].update(new_units[unit_id], {'action': new_units[unit_id].action,
-                                                            'damage': new_units[unit_id].damage_dealt});
-        });
         units_to_remove.forEach(unit_id => {
             this.units[unit_id].image.remove();
             delete this.units[unit_id];
         });
         units_to_add.forEach(unit_id => {
             this.units[unit_id] = new Unit(this, new_units[unit_id]);
-        })
+        });
+        units_to_update.forEach(unit_id => {
+            this.units[unit_id].update(new_units[unit_id], units_actions[unit_id]);
+        });
+    }
+
+    getUnitByHex(_hex) {
+        if (this.hero.hex == _hex) {
+            return this.hero;
+        }
+        for (var unit_id in this.units) {
+            let unit = this.units[unit_id];
+            if (unit.hex == _hex) {
+                return unit;
+            }
+        };
     }
 
     showMoves() {
@@ -94,4 +106,4 @@ class Board {
     }
 }
 
-export default Board
+export default GameInstance
