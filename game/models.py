@@ -45,10 +45,10 @@ class ItemModel(HandbookModel):
     img_path = models.TextField(default='./src/assets/item.jpeg')
 
 
-class ItemEffect(models.Model):
+class ItemEffectModel(models.Model):
     """Intermediary table to bind spells and effects"""
-    item = models.ForeignKey(Item, on_delete=models.CASCADE)
-    effect = models.ForeignKey(Effect, on_delete=models.CASCADE)
+    item = models.ForeignKey(ItemModel, on_delete=models.CASCADE)
+    effect = models.ForeignKey(EffectModel, on_delete=models.CASCADE)
     value = models.FloatField(default=0.0)
 
     def __str__(self):
@@ -74,7 +74,7 @@ class SpellEffectModel(models.Model):
         return f'{self.spell.code_name}.{self.effect.code_name}'
 
 
-class GameStructure(HandbookModel):
+class GameStructureModel(HandbookModel):
     """Table listing game structures"""
     img_path = models.TextField(default='./src/assets/building.png')
     round_frequency = models.IntegerField(default=1)  # structure will appear every <round_frequency> rounds

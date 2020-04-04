@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import HeroModel, ItemModel, SpellModel, EffectModel, SkillModel, GameModel, UnitModel, SpellEffectModel, GameStructure
+from .models import HeroModel, ItemModel, SpellModel, EffectModel, SkillModel, GameModel, UnitModel, SpellEffectModel, GameStructureModel
 
 
 admin.site.register(GameModel)
@@ -10,4 +10,4 @@ admin.site.register(SpellEffectModel)
 admin.site.register(EffectModel)
 admin.site.register(SkillModel)
 admin.site.register(UnitModel)
-admin.site.register(GameStructure)
+admin.site.register(GameStructureModel)

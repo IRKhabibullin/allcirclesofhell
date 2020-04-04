@@ -6,7 +6,7 @@ from typing import Dict
 from game.mechanics.actions import ActionManager, Action, ActionResponse
 from game.mechanics.game_objects import Hero, BaseGameObject, BaseUnitObject, Unit
 from game.mechanics.game_sturctures import StructuresManager
-from game.models import User, GameModel, UnitModel, HeroModel, ItemModel
+from game.models import User, GameModel, UnitModel, HeroModel, ItemModel, GameStructureModel
 from game.mechanics.board import Board, Hex
 from game.mechanics.constants import slotHero, slotEmpty, slotUnit, slotObstacle
 
@@ -66,16 +66,16 @@ class GameInstance:
         self.structures.clear()
         self._board.clear_board()
         self._board.place_game_object(self._hero, f'0;{self._board.radius // 2}')
-        self._board.set_obstacles()
         self.place_structures()
+        self._board.set_obstacles()
         self.place_units()
         self.update_moves()
 
-    def place_structures():
-        for structure in GameStructure.objects.all():
-            if self._game.round % structure.round_frequency == 0:
-                StructuresManager.build(self, structure)
-                self.structures[structure.code_name] = structure
+    def place_structures(self):
+        for structure_model in GameStructureModel.objects.all():
+            if self._game.round % structure_model.round_frequency == 0:
+                structure = StructuresManager.build(self, structure_model)
+                self.structures[structure_model.code_name] = structure
 
     def place_units(self):
         """Place units based on current game level"""
@@ -129,7 +129,7 @@ class GameInstance:
 
     def exit_round(self):
         self._game.round += 1
-        self.init_round()
+        self.start_round()
 
     def save_state(self):
         """Save state of the game"""
@@ -160,7 +160,12 @@ class GameInstance:
         try:
             action_data['source'] = self._hero
             action: Action = ActionManager.get_action(self, action_data)
-            response.hero_actions.update(action.execute())
+            action_result = action.execute()
+            if response.name == 'exit' and not action_result:
+                # if result is empty, then start new round
+                return response
+            else:
+                response.hero_actions.update(action_result)
         except RuntimeError as err:
             print('Hero action failed', err)
             response.state = 'failed'

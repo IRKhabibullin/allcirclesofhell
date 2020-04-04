@@ -1,6 +1,6 @@
 from rest_framework.fields import DictField, ListField
 
-from game.models import HeroModel, ItemModel, GameModel, UnitModel, SpellModel, GameStructure
+from game.models import HeroModel, ItemModel, GameModel, UnitModel, SpellModel, GameStructureModel
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
@@ -68,13 +68,13 @@ class UnitSerializer(serializers.HyperlinkedModelSerializer):
 
 class StructureSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
-        model = GameStructure
+        model = GameStructureModel
         fields = ['pk', 'name', 'code_name', 'position', 'img_path']
 
-    position = serializers.SerializerMethodField('structure_position')
-
-    def structure_position(self, structure):
-        return f'{structure.position.q};{structure.position.r}'
+    # position = serializers.SerializerMethodField('structure_position')
+    #
+    # def structure_position(self, structure):
+    #     return f'{structure.position.q};{structure.position.r}'
 
 
 class GameInstanceSerializer(serializers.Serializer):
@@ -84,7 +84,7 @@ class GameInstanceSerializer(serializers.Serializer):
     game_id = serializers.SerializerMethodField('game_pk')
     # game = GameSerializer(read_only=True)
     units = serializers.SerializerMethodField('game_units')
-    structures = DictField(child=StructureSerializer())
+    structures = serializers.SerializerMethodField('game_structures')
 
     def game_hero(self, game):
         hero = HeroSerializer(game.hero._object).data
@@ -96,6 +96,12 @@ class GameInstanceSerializer(serializers.Serializer):
         for pk, unit in units.items():
             unit['position'] = game.units[pk].position.id
         return units
+
+    def game_structures(self, game):
+        structures = {pk: StructureSerializer(structure._object).data for pk, structure in game.structures.items()}
+        for pk, structure in structures.items():
+            structure['position'] = game.structures[pk].position.id
+        return structures
 
     def game_board(self, game):
         return game._board.get_state()

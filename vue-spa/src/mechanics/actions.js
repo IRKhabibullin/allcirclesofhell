@@ -16,8 +16,8 @@ class ActionManager {
                     for (var hex_id in this.game_instance.grid.hexes) {
                         this.game_instance.grid.hexes[hex_id].clickHandler = this.actions.move.hexClickHandler;
                     }
-                    for (var structure_id in this.board.structures) {
-                        this.board.structures[structure_id].clickTargetHandler = this.actions.move.structureClickHandler;
+                    for (var structure_id in this.game_instance.structures) {
+                        this.game_instance.structures[structure_id].clickTargetHandler = this.actions.move.structureClickHandler;
                     }
                     for (var unit_id in this.game_instance.units) {
                         this.game_instance.units[unit_id].clickTargetHandler = this.actions.move.unitClickHandler;
@@ -68,10 +68,10 @@ class ActionManager {
                     if (this.currentAction != 'move') {
                         this.changeAction('move');
                     }
-                    if (this.board.grid.distance(structure.hex, this.board.hero.hex) <= this.board.hero.move_range) {
+                    if (this.game_instance.grid.distance(structure.hex, this.game_instance.hero.hex) <= this.game_instance.hero.move_range) {
                         this.actions.move.resetPath();
-                        this.board.component.requestAction({'action': 'enter_structure',
-                                                            'target': structure.code_name});
+                        this.game_instance.component.requestAction({'action': 'exit',
+                                                                    'target_hex': structure.hex.q + ';' + structure.hex.r});
                     } else {
                         this.actions.move.goLongPath(structure.hex);
                     }
@@ -93,7 +93,7 @@ class ActionManager {
                 actionHandler: (source, actionSteps) => {
                     let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
                     source.move(target_hex);
-                    if (source instanceof Hero && 'path' in this.actionData) {
+                    if (source instanceof Hero && 'path' in this.actionData && this.actionData.path.length > 0) {
                         let passed_hex = this.actionData.path.pop(this.actionData.path.length - 1);
                         passed_hex.polygon.classList.remove('path');
                     }

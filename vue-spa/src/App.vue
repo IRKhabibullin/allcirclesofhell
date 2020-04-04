@@ -29,7 +29,15 @@
                 @game_action="requestAction"
                 @close_game="closeGame"
                 ref="playground"
-            ></Playground>
+            >
+                <b-alert
+                  :show="dismissCountDown"
+                  dismissible
+                  fade
+                  variant="primary"
+                  @dismiss-count-down="countDownChanged"
+                >{{ alertMessage }}</b-alert>
+            </Playground>
         </main>
     </div>
 </template>
@@ -54,7 +62,10 @@
                 //
                 game_state: 'logged_out',
                 username: '',
-                game_data: null
+                game_data: null,
+                dismissSecs: 5,
+                dismissCountDown: 0,
+                alertMessage: ''
             }
         },
         components: {
@@ -93,7 +104,9 @@
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }
                 })
-                .then(response => {})
+                .then(response => {
+                    this.showAlert('Game is saved')
+                })
                 .catch(error => {
                     console.log('Failed to save state', error);
                 })
@@ -109,6 +122,7 @@
                 })
                 .then(response => {
                     this.game_data = response.data;
+                    this.showAlert('Game is loaded')
                     console.log('Loaded state', this.game_data);
                     this.$refs.playground.updateGame(response.data);
                 })
@@ -145,7 +159,12 @@
                 })
                 .then(response => {
                     this.game_data.hero = response.data.hero;
-                    this.$refs.playground.handleAction(response.data);
+                    if (response.data.action_data.action == 'exit' && response.data.action_data.state == 'success') {
+                        this.$refs.playground.updateGame(response.data);
+                        this.showAlert('You have passed to a new round!');
+                    } else {
+                        this.$refs.playground.handleAction(response.data);
+                    }
                 })
                 .catch(error => {
                     console.log('Failed to handle action', error);
@@ -164,6 +183,13 @@
                 .catch(error => {
                     console.log('Failed to close game', error);
                 })
+            },
+            countDownChanged(dismissCountDown) {
+                this.dismissCountDown = dismissCountDown;
+            },
+            showAlert(message) {
+                this.alertMessage = message;
+                this.dismissCountDown = this.dismissSecs;
             }
         }
     }

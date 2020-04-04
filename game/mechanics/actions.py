@@ -4,6 +4,7 @@ Functions for actions
 from collections import defaultdict
 from typing import List, Dict, TYPE_CHECKING
 
+from game.mechanics.game_sturctures import Exit
 from game.models import SpellModel
 from game.mechanics.constants import slotEmpty, slotObstacle
 from game.mechanics.game_objects import Hero, BaseGameObject, BaseUnitObject
@@ -275,18 +276,29 @@ class Blink(SpellAction):
         return {self.action_name: [{'target_hex': self.target_hex}]}
 
 
-class ExitRound:
-    def __init__(self, game, action_data):
-        self.game = game
-        self.target = self.game.structures[action_data.get('target')]
-        if not self.target:
-            raise ActionNotAllowedError
-        if self.game.board.distance(self.target.position, self.game.hero.position) > self.game.hero.move_range:
-            raise ActionNotAllowedError
+class ExitRound(Action):
+    """Simple move"""
+    action_name = 'exit'
 
-    def execute(self):
-        self.game.exit_round()
-        return {}
+    def __init__(self, game: 'GameInstance', action_data):
+        if not isinstance(action_data['source'], Hero):
+            raise RuntimeError(f'This game object can not perform action {self.action_name}')
+        super().__init__(game, action_data)
+
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
+        return []
+
+    def execute(self) -> Dict[str, List]:
+        if self.game.distance(self.source.position, self.target_hex) > self.source.move_range:
+            raise RuntimeError('Target is too far')
+        structure = self.game.get_object_by_position(self.target_hex)
+        if isinstance(structure, Exit):
+            self.game.exit_round()
+            return {}
+        # if can not end round, then just try to move to target_hex
+        self.game.move_object(self.source, self.target_hex)
+        return {self.action_name: [{'target_hex': self.target_hex}]}
 
 
 class ActionManager:
@@ -299,7 +311,7 @@ class ActionManager:
         'path_of_fire': PathOfFire,
         'shield_bash': ShieldBash,
         'blink': Blink,
-        'enter_structure': ExitRound
+        'exit': ExitRound
     }
 
     @classmethod
