@@ -111,6 +111,7 @@ class GameInstance:
         """Load saved state of the game"""
         game_state = json.loads(self._game.state)
 
+        self._game.round = game_state.get('round', self._game.round)
         self._units.clear()
         self.structures.clear()
         self._board.clear_board()
@@ -135,15 +136,19 @@ class GameInstance:
 
     def exit_round(self):
         self._game.round += 1
+        self._game.save()
         self.start_round()
 
     def save_state(self):
         """Save state of the game"""
-        game_state = {'hero': {'health': self.hero.health, 'position': self.hero.position.id},
-                      'hexes': [],
-                      'units': [],
-                      'structures': [],
-                      }
+        # need to save hero spells/skills/items too
+        game_state = {
+            'round': self._game.round,
+            'hero': {'health': self.hero.health, 'position': self.hero.position.id},
+            'hexes': [],
+            'units': [],
+            'structures': [],
+        }
         for hex_id, _hex in self._board.items():
             if str(_hex.slot) == slotObstacle:
                 game_state['hexes'].append({'q': _hex.q, 'r': _hex.r, 'slot': slotObstacle})

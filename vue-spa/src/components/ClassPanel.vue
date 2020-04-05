@@ -1,15 +1,15 @@
 <template>
-    <b-card-body class="p-2" body-bg-variant="transparent">
+    <b-card-body class="p-2 text-outline" body-bg-variant="transparent">
         <b-list-group>
-            <b-list-group-item class="bg-transparent text-outline border-0 p-0 d-flex justify-content-between align-items-center">
+            <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                 Health
                 <b-badge variant="primary" pill>{{ hero.health }}</b-badge>
             </b-list-group-item>
-            <b-list-group-item class="bg-transparent text-outline border-0 p-0 d-flex justify-content-between align-items-center">
+            <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                 Damage
                 <b-badge variant="primary" pill>{{ hero.damage }}</b-badge>
             </b-list-group-item>
-            <b-list-group-item class="bg-transparent text-outline border-0 p-0 d-flex justify-content-between align-items-center">
+            <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                 Armor
                 <b-badge variant="primary" pill>{{ hero.armor }}</b-badge>
             </b-list-group-item>

@@ -1,6 +1,6 @@
 <template>
     <div class="row d-flex justify-content-between">
-        <b-overlay :show="overlay.show" variant="transparent" opacity=0.9 class="col-6">
+        <b-overlay :show="overlay.show" variant="transparent" class="col-6">
             <svg id="drawing" class="text-left m-4"></svg>
 
             <template v-slot:overlay>
@@ -10,7 +10,7 @@
                 </div>
             </template>
         </b-overlay>
-        <div class="col-2 height=100%">
+        <div class="col-2 height=100% text-outline">
             <b-card
                 v-if="!!game_instance && game_instance.current_unit"
                 v-show="game_instance.show_unit_card && game_instance.altPressed"
