@@ -1,6 +1,6 @@
 <template>
-    <div id="app">
-        <main class="row">
+    <div id="app" style="background-image:url(./src/assets/background.jpg); background-size: contain;">
+        <main class="row m-0">
             <aside class="col-2 px-0 pl-4 pt-2">
                 <div class="text-left" v-if="game_state != 'logged_out'">
                     <b-dropdown id="dropdown-1" text="Settings" class="m-md-2">
@@ -21,33 +21,16 @@
                     v-else-if="game_state == 'logged_in'"
                 ></GamesList>
                 <CharacterInfo :hero="game_data.hero" v-else-if="game_state == 'game_loaded'"></CharacterInfo>
-                <b-alert
-                    :show="dismissCountDown"
-                    fade
-                    variant="success"
-                    @dismiss-count-down="countDownChanged"
-                >{{ alertMessage }}</b-alert>
             </aside>
-            <b-overlay :show="playgroundOverlay" class="col-10 p-0 m-0">
-                <Playground
-                    :initial_game_data="game_data"
-                    v-if="game_state == 'game_loaded'"
-                    @game_action="requestAction"
-                    @close_game="closeGame"
-                    ref="playground"
-                >
-                </Playground>
-
-                <template v-slot:overlay>
-                    <div class="text-center">
-                        <p>Congratulations! Round is finished!</p>
-                        <b-button variant="outline-success" size="sm" @click="playgroundOverlay = false">
-                            Start next round
-                        </b-button>
-                    </div>
-                </template>
-            </b-overlay>
-
+            <Playground
+                class="col-10 p-0 m-0"
+                :initial_game_data="game_data"
+                v-if="game_state == 'game_loaded'"
+                @game_action="requestAction"
+                @close_game="closeGame"
+                ref="playground"
+            >
+            </Playground>
         </main>
     </div>
 </template>
@@ -72,11 +55,7 @@
                 //
                 game_state: 'logged_out',
                 username: '',
-                game_data: null,
-                dismissSecs: 5,
-                dismissCountDown: 0,
-                alertMessage: '',
-                playgroundOverlay: false
+                game_data: null
             }
         },
         components: {
@@ -116,7 +95,7 @@
                     }
                 })
                 .then(response => {
-                    this.showAlert('Game is saved')
+                    this.$refs.playground.gameStateUpdated('save');
                 })
                 .catch(error => {
                     console.log('Failed to save state', error);
@@ -134,8 +113,7 @@
                 .then(response => {
                     this.game_data = response.data;
                     console.log('Loaded state', this.game_data);
-                    this.$refs.playground.updateGame(response.data);
-                    this.showAlert('Game is loaded');
+                    this.$refs.playground.updateGame(response.data, 'load');
                 })
                 .catch(error => {
                     console.log('Failed to load state', error);
@@ -171,7 +149,6 @@
                 .then(response => {
                     this.game_data.hero = response.data.hero;
                     if (response.data.action_data.action == 'exit' && response.data.action_data.state == 'success') {
-                        this.playgroundOverlay = true;
                         this.$refs.playground.updateGame(response.data);
                         // this.showAlert('You have passed to a new round!');
                     } else {
@@ -195,13 +172,6 @@
                 .catch(error => {
                     console.log('Failed to close game', error);
                 })
-            },
-            countDownChanged(dismissCountDown) {
-                this.dismissCountDown = dismissCountDown;
-            },
-            showAlert(message) {
-                this.alertMessage = message;
-                this.dismissCountDown = this.dismissSecs;
             }
         }
     }

@@ -40,7 +40,10 @@ class StructuresManager:
     }
 
     @staticmethod
-    def build(game: 'GameInstance', structure_model: 'GameStructureModel') -> BaseStructure:
+    def build(game: 'GameInstance', structure_model: 'GameStructureModel', position: str = None) -> BaseStructure:
         structure = StructuresManager._structures_mapping[structure_model.code_name](structure_model)
-        game.move_object(structure, structure.find_position(game._board))
+        if position is not None:
+            game.move_object(structure, position)
+        else:
+            game.move_object(structure, structure.find_position(game._board))
         return structure

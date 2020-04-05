@@ -119,9 +119,9 @@ class GameInstance:
         self._board.place_game_object(self._hero, hero.get('position', f'0;{self._board.radius // 2}'))
         self._board.load_state(game_state.get('hexes', []))
         if 'structures' in game_state:
-            for structure_data in game_state.get('structure', []):
+            for structure_data in game_state.get('structures', []):
                 structure_model = GameStructureModel.objects.get(code_name=structure_data['code_name'])
-                structure = StructuresManager.build(self, structure_model)
+                structure = StructuresManager.build(self, structure_model, structure_data['position'])
                 self.structures[structure_model.code_name] = structure
         if 'units' in game_state:
             for unit_data in game_state.get('units', []):
@@ -139,12 +139,18 @@ class GameInstance:
 
     def save_state(self):
         """Save state of the game"""
-        game_state = {'hero': {'health': self.hero.health, 'position': self.hero.position.id}, 'hexes': [], 'units': []}
+        game_state = {'hero': {'health': self.hero.health, 'position': self.hero.position.id},
+                      'hexes': [],
+                      'units': [],
+                      'structures': [],
+                      }
         for hex_id, _hex in self._board.items():
             if str(_hex.slot) == slotObstacle:
                 game_state['hexes'].append({'q': _hex.q, 'r': _hex.r, 'slot': slotObstacle})
         for unit_id, unit in self.units.items():
             game_state['units'].append({'level': unit.level, 'health': unit.health, 'position': unit.position.id})
+        for code_name, structure in self.structures.items():
+            game_state['structures'].append({'code_name': code_name, 'position': structure.position.id})
         self._game.state = json.dumps(game_state)
         self._game.save()
 

@@ -1,27 +1,41 @@
 <template>
     <div class="row d-flex justify-content-between">
-        <svg id="drawing" class="text-left m-4 col-6"></svg>
+        <b-overlay :show="overlay.show" variant="transparent" opacity=0.9 class="col-6">
+            <svg id="drawing" class="text-left m-4"></svg>
+
+            <template v-slot:overlay>
+                <div class="rounded text-center">
+                    <p v-show="gameState.show" class="p-1 font-weight-bold text-white text-outline">{{ gameState.text }}</p>
+                    <p class="p-1 font-weight-bold text-white text-outline">Round {{ game_round }}</p>
+                </div>
+            </template>
+        </b-overlay>
         <div class="col-2 height=100%">
-            <b-card v-if="!!game_instance && game_instance.current_unit" v-show="game_instance.show_unit_card && game_instance.altPressed">
+            <b-card
+                v-if="!!game_instance && game_instance.current_unit"
+                v-show="game_instance.show_unit_card && game_instance.altPressed"
+                style="background-color: transparent;"
+                class="blur"
+            >
                 <b-card-title>{{ game_instance.current_unit.name }}</b-card-title>
                 <b-list-group>
-                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                    <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                         Health
                         <b-badge variant="primary" pill>{{ game_instance.current_unit.health }}</b-badge>
                     </b-list-group-item>
-                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                    <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                         Damage
                         <b-badge variant="primary" pill>{{ game_instance.current_unit.damage }}</b-badge>
                     </b-list-group-item>
-                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                    <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                         Armor
                         <b-badge variant="primary" pill>{{ game_instance.current_unit.armor }}</b-badge>
                     </b-list-group-item>
                 </b-list-group>
             </b-card>
         </div>
-        <div class="col-2 height=100% m-4">
-            <b-card v-if="!!game_instance">
+        <b-overlay :show="overlay.show" variant='transparent' opacity=0.85 class="col-2">
+            <b-card v-if="!!game_instance" class="bg-transparent text-outline height=100% m-3 blur">
                 <b-card-title>Actions</b-card-title>
                 <b-list-group class="align-items-center">
                     <b-button
@@ -56,7 +70,11 @@
                     </b-button>
                 </b-list-group>
             </b-card>
-        </div>
+
+            <template v-slot:overlay>
+                <p></p>
+            </template>
+        </b-overlay>
     </div>
 </template>
 
@@ -74,7 +92,16 @@
             return {
                 game_data: this.initial_game_data,
                 svg: null,
-                game_instance: null
+                game_round: null,
+                game_instance: null,
+                overlay: {
+                    show: false,
+                    timeout: null
+                },
+                gameState: {
+                    show: false,
+                    text: ''
+                }
             }
         },
         destroyed() {
@@ -82,7 +109,9 @@
             window.removeEventListener('keyup', this.keyupHandler);
         },
         mounted() {
-            console.log('initial', this.initial_game_data);
+            console.log('initial data', this.initial_game_data);
+            this.game_round = this.initial_game_data.round;
+            this.showRoundOverlay();
             this.svg = SVG(document.getElementById('drawing'));
             this.game_instance = new GameInstance(this, this.svg, this.game_data);
             window.addEventListener('keydown', this.keydownHandler);
@@ -99,10 +128,42 @@
             handleAction(actionData) {
                 this.game_instance.handleAction(actionData);
             },
-            updateGame(gameData) {
+            updateGame(gameData, gameState) {
+                this.game_round = gameData.round;
+                this.gameStateUpdated(gameState);
                 this.svg.clear();
                 this.game_data = gameData;
                 this.game_instance = new GameInstance(this, this.svg, this.game_data);
+            },
+            clearTimeout() {
+                if (this.overlay.timeout) {
+                    clearTimeout(this.overlay.timeout);
+                    this.overlay.timeout = null;
+                }
+            },
+            setTimeout(callback) {
+                this.clearTimeout();
+                this.overlay.timeout = setTimeout(() => {
+                    this.clearTimeout();
+                    callback();
+                }, 1500)
+            },
+            showRoundOverlay() {
+                this.overlay.show = true;
+                this.setTimeout(() => {
+                    this.overlay.show = false;
+                    this.gameState.show = false;
+                })
+            },
+            gameStateUpdated(state) {
+                if (state == 'save') {
+                    this.gameState.text = 'Game is saved';
+                    this.gameState.show = true;
+                } else if (state == 'load') {
+                    this.gameState.text = 'Game is loaded';
+                    this.gameState.show = true;
+                }
+                this.showRoundOverlay();
             },
             keydownHandler(e) {
                 if (e.keyCode == 18) {
