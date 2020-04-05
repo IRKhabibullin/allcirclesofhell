@@ -1,7 +1,7 @@
 <template>
     <div id="app">
         <main class="row">
-            <aside class="col-2 px-0 ml-4 mt-2">
+            <aside class="col-2 px-0 pl-4 pt-2">
                 <div class="text-left" v-if="game_state != 'logged_out'">
                     <b-dropdown id="dropdown-1" text="Settings" class="m-md-2">
                         <b-dropdown-item disabled>{{ this.username }}</b-dropdown-item>
@@ -21,23 +21,33 @@
                     v-else-if="game_state == 'logged_in'"
                 ></GamesList>
                 <CharacterInfo :hero="game_data.hero" v-else-if="game_state == 'game_loaded'"></CharacterInfo>
-            </aside>
-            <Playground
-                :initial_game_data="game_data"
-                v-if="game_state == 'game_loaded'"
-                class="col-10 px-0"
-                @game_action="requestAction"
-                @close_game="closeGame"
-                ref="playground"
-            >
                 <b-alert
-                  :show="dismissCountDown"
-                  dismissible
-                  fade
-                  variant="primary"
-                  @dismiss-count-down="countDownChanged"
+                    :show="dismissCountDown"
+                    fade
+                    variant="success"
+                    @dismiss-count-down="countDownChanged"
                 >{{ alertMessage }}</b-alert>
-            </Playground>
+            </aside>
+            <b-overlay :show="playgroundOverlay" class="col-10 p-0 m-0">
+                <Playground
+                    :initial_game_data="game_data"
+                    v-if="game_state == 'game_loaded'"
+                    @game_action="requestAction"
+                    @close_game="closeGame"
+                    ref="playground"
+                >
+                </Playground>
+
+                <template v-slot:overlay>
+                    <div class="text-center">
+                        <p>Congratulations! Round is finished!</p>
+                        <b-button variant="outline-success" size="sm" @click="playgroundOverlay = false">
+                            Start next round
+                        </b-button>
+                    </div>
+                </template>
+            </b-overlay>
+
         </main>
     </div>
 </template>
@@ -65,7 +75,8 @@
                 game_data: null,
                 dismissSecs: 5,
                 dismissCountDown: 0,
-                alertMessage: ''
+                alertMessage: '',
+                playgroundOverlay: false
             }
         },
         components: {
@@ -122,9 +133,9 @@
                 })
                 .then(response => {
                     this.game_data = response.data;
-                    this.showAlert('Game is loaded')
                     console.log('Loaded state', this.game_data);
                     this.$refs.playground.updateGame(response.data);
+                    this.showAlert('Game is loaded');
                 })
                 .catch(error => {
                     console.log('Failed to load state', error);
@@ -160,8 +171,9 @@
                 .then(response => {
                     this.game_data.hero = response.data.hero;
                     if (response.data.action_data.action == 'exit' && response.data.action_data.state == 'success') {
+                        this.playgroundOverlay = true;
                         this.$refs.playground.updateGame(response.data);
-                        this.showAlert('You have passed to a new round!');
+                        // this.showAlert('You have passed to a new round!');
                     } else {
                         this.$refs.playground.handleAction(response.data);
                     }

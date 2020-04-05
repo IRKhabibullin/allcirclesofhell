@@ -112,11 +112,17 @@ class GameInstance:
         game_state = json.loads(self._game.state)
 
         self._units.clear()
+        self.structures.clear()
         self._board.clear_board()
         hero = game_state.get('hero', {})
         self.hero.set_health(hero.get('health', self.hero.health))
         self._board.place_game_object(self._hero, hero.get('position', f'0;{self._board.radius // 2}'))
         self._board.load_state(game_state.get('hexes', []))
+        if 'structures' in game_state:
+            for structure_data in game_state.get('structure', []):
+                structure_model = GameStructureModel.objects.get(code_name=structure_data['code_name'])
+                structure = StructuresManager.build(self, structure_model)
+                self.structures[structure_model.code_name] = structure
         if 'units' in game_state:
             for unit_data in game_state.get('units', []):
                 unit = UnitModel.objects.get(level=unit_data['level'])
