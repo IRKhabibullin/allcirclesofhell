@@ -1,7 +1,5 @@
-from random import randrange
-from typing import TYPE_CHECKING, Dict
-
-from game.mechanics.board import Board
+from typing import TYPE_CHECKING, Dict, List
+from game.mechanics.constants import slotStructure
 from game.mechanics.game_objects import InteractiveGameObject
 from game.models import GameStructureModel
 
@@ -17,15 +15,13 @@ class BaseStructure(InteractiveGameObject):
         super().__init__(object_model)
         self.position = ''
 
-    def find_position(self, board: 'Board'):
-        # todo make normal positioning
-        return f'{randrange(-board.radius, board.radius)};{randrange(-board.radius, board.radius)}'
+    def __str__(self):
+        return slotStructure
 
 
 class Exit(BaseStructure):
-    """Class to work with Exit building"""
-    def find_position(self, board: 'Board'):
-        return f'{0};-{board.radius - 2}'
+    """Exit from round"""
+    pass
 
 
 class Shop(BaseStructure):
@@ -39,11 +35,16 @@ class StructuresManager:
         'shop': Shop,
     }
 
-    @staticmethod
-    def build(game: 'GameInstance', structure_model: 'GameStructureModel', position: str = None) -> BaseStructure:
-        structure = StructuresManager._structures_mapping[structure_model.code_name](structure_model)
-        if position is not None:
-            game.move_object(structure, position)
-        else:
-            game.move_object(structure, structure.find_position(game._board))
+    @classmethod
+    def place_structures(cls, game: 'GameInstance', available_hexes: List[str], exit_position: str):
+        for structure_model in GameStructureModel.objects.all():
+            if game.round % structure_model.round_frequency == 0:
+                position = exit_position if structure_model.code_name == 'exit' else available_hexes.pop()
+                structure = cls.build(game, structure_model, position)
+                game.structures[structure_model.code_name] = structure
+
+    @classmethod
+    def build(cls, game: 'GameInstance', structure_model: GameStructureModel, position: str) -> BaseStructure:
+        structure = cls._structures_mapping[structure_model.code_name](structure_model)
+        game.move_object(structure, position)
         return structure

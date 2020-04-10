@@ -22,7 +22,7 @@ class GameInstance:
         self._hero = Hero(self._game.hero)
 
         # round-wise game objects
-        self._units = {}
+        self.units = {}
         self.structures = {}
 
     @classmethod
@@ -46,14 +46,13 @@ class GameInstance:
             return cls(_game)
 
     @property
+    def round(self):
+        return self._game.round
+
+    @property
     def hero(self) -> Hero:
         """Get game hero"""
         return self._hero
-
-    @property
-    def units(self) -> Dict[int, Unit]:
-        """Get game units dict"""
-        return self._units
 
     def start_round(self):
         """
@@ -62,20 +61,32 @@ class GameInstance:
         Setting hero position
         Counting and placing units
         """
-        self._units.clear()
-        self.structures.clear()
+        # clear everything round-vise
         self._board.clear_board()
-        self._board.place_game_object(self._hero, f'0;{self._board.radius // 2}')
-        self.place_structures()
+        self.units.clear()
+        self.structures.clear()
+
+        # place objects for a new round
+        self.move_object(self._hero, f'0;{self._board.radius // 2}')
+
+        StructuresManager.place_structures(self, self.get_available_hexes(), f'{0};-{self._board.radius - 2}')
         self._board.set_obstacles()
         self.place_units()
         self.update_moves()
 
-    def place_structures(self):
-        for structure_model in GameStructureModel.objects.all():
-            if self._game.round % structure_model.round_frequency == 0:
-                structure = StructuresManager.build(self, structure_model)
-                self.structures[structure_model.code_name] = structure
+    def get_available_hexes(self) -> list:
+        """
+        Find hexes, where game objects could spawn.
+        They must be in some distance from hero so he won't be attacked by all units at start and die instantly
+        """
+        # secure fixed place for exit
+        exit_pos = f'{0};-{self._board.radius - 2}'
+        available_hexes = {_id for _id, _hex in self._board.items() if _hex.slot == slotEmpty and _id != exit_pos}
+        safe_range = max(self._board.radius // 2 - self._game.round // 8, 1)
+        safe_hexes = self._board.get_hexes_in_range(self._hero.position, safe_range, allowed=[slotEmpty, slotHero])
+        available_hexes = list(available_hexes - safe_hexes.keys())
+        shuffle(available_hexes)
+        return available_hexes
 
     def place_units(self):
         """Place units based on current game level"""
@@ -89,30 +100,23 @@ class GameInstance:
             u_count = points if unit_level == 1 else round((points // 2) / unit_level)
             for i in range(u_count):
                 unit = UnitModel.objects.get(level=unit_level)
-                unit.pk = len(self._units)
+                unit.pk = len(self.units)
                 unit = Unit(unit)
                 self._board.place_game_object(unit, _available_hexes.pop())
-                self._units[unit.pk] = unit
+                self.units[unit.pk] = unit
             points_remain = int(points - u_count * unit_level)
             if points_remain:
                 place_by_unit_level(points_remain, unit_level // 2, _available_hexes)
 
-        available_hexes = {_id for _id, _hex in self._board.items() if _hex.slot == slotEmpty}
-        # area around hero, where units can spawn. Each 8 rounds safe ring shrinks
-        safe_range = max(self._board.radius // 2 - self._game.round // 8, 1)
-        safe_hexes = self._board.get_hexes_in_range(self._hero.position, safe_range, allowed=[slotEmpty, slotHero])
-        available_hexes = list(available_hexes - safe_hexes.keys())
-        shuffle(available_hexes)
-
         max_unit_level = int(math.pow(2, math.floor(math.log2(self._game.round / 2)))) or 1
-        place_by_unit_level(self._game.round, max_unit_level, available_hexes)
+        place_by_unit_level(self._game.round, max_unit_level, self.get_available_hexes())
 
     def load_state(self):
         """Load saved state of the game"""
         game_state = json.loads(self._game.state)
 
         self._game.round = game_state.get('round', self._game.round)
-        self._units.clear()
+        self.units.clear()
         self.structures.clear()
         self._board.clear_board()
         hero = game_state.get('hero', {})
@@ -127,11 +131,11 @@ class GameInstance:
         if 'units' in game_state:
             for unit_data in game_state.get('units', []):
                 unit = UnitModel.objects.get(level=unit_data['level'])
-                unit.pk = len(self._units)
+                unit.pk = len(self.units)
                 unit.health = unit_data['health']
                 unit = Unit(unit)
                 self._board.place_game_object(unit, unit_data['position'])
-                self._units[unit.pk] = unit
+                self.units[unit.pk] = unit
         self.update_moves()
 
     def exit_round(self):
@@ -165,7 +169,7 @@ class GameInstance:
             self._board.get_hexes_in_range(self._hero.position, self._hero.move_range, allowed=[slotEmpty]).keys())
         self._hero.attack_hexes = list(self._board.get_hexes_in_range(self._hero.position, self._hero.attack_range,
                                                                       allowed=[slotEmpty, slotUnit]).keys())
-        for unit in self._units.values():
+        for unit in self.units.values():
             unit.moves = list(self._board.get_hexes_in_range(unit.position, unit.move_range, allowed=[slotEmpty]).keys())
             unit.attack_hexes = list(self._board.get_hexes_in_range(unit.position, unit.attack_range,
                                                                     allowed=[slotEmpty, slotHero]).keys())
@@ -188,7 +192,7 @@ class GameInstance:
             response.state = 'failed'
         # if fails then return failure and units doesnt act
         if response.state != 'failed':
-            for unit in self._units.values():
+            for unit in self.units.values():
                 # units choose from available actions
                 available_actions = ActionManager.available_actions(self, unit)
                 chosen_action = ActionManager.get_action(self, unit.choose_action(available_actions))
@@ -226,7 +230,7 @@ class GameInstance:
         """Remove unit from game. Called on units death"""
         target.position.slot = slotEmpty
         if isinstance(target, Unit):
-            del self._units[target.pk]
+            del self.units[target.pk]
 
     def distance(self, source: Hex, target_hex: str) -> int:
         """Get distance between two hexes. If no target_hex on board, then exception raised"""
