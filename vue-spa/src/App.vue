@@ -27,6 +27,7 @@
                 :initial_game_data="game_data"
                 v-if="game_state == 'game_loaded'"
                 @game_action="requestAction"
+                @quit_game="setLoginState('logged_in')"
                 @close_game="closeGame"
                 ref="playground"
             >
@@ -168,7 +169,10 @@
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }
                 })
-                .then(response => {})
+                .then(response => {
+                    this.game_data = null;
+                    this.game_state = 'logged_in';
+                })
                 .catch(error => {
                     console.log('Failed to close game', error);
                 })

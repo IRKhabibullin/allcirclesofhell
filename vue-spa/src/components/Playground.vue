@@ -1,12 +1,14 @@
 <template>
     <div class="row d-flex justify-content-between">
-        <b-overlay :show="overlay.show" variant="transparent" class="col-6">
+        <b-overlay :show="overlay.show" variant="transparent" class="col-5">
             <svg id="drawing" class="text-left m-4"></svg>
 
             <template v-slot:overlay>
                 <div class="rounded text-center">
                     <p v-show="gameState.show" class="p-1 font-weight-bold text-white text-outline">{{ gameState.text }}</p>
-                    <p class="p-1 font-weight-bold text-white text-outline">Round {{ game_round }}</p>
+                    <p v-show="gameState.showRound"class="p-1 font-weight-bold text-white text-outline">Round {{ game_round }}</p>
+                    <p v-show="gameState.gameOver" class="p-1 font-weight-bold text-white text-outline">Game over</p>
+                    <b-button v-show="gameState.gameOver" variant="danger" v-on:click="quitGame()">Exit</b-button>
                 </div>
             </template>
         </b-overlay>
@@ -33,6 +35,28 @@
                     </b-list-group-item>
                 </b-list-group>
             </b-card>
+        </div>
+        <div class="col-2" v-show="store.show">
+            <b-card class="bg-transparent" overlay :img-src=store.image img-top>
+                <div class="d-flex justify-content-end">
+                    <h5>{{ store.name }}</h5>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <b-button variant="outline-danger" v-on:click="exitStore()">Exit</b-button>
+                </div>
+            </b-card>
+            <b-list-group v-for="item in this.store.assortment">
+                <b-list-group-item
+                    button
+                    class="d-flex align-items-center bg-transparent text-outline blur"
+                    v-bind:title="item.description"
+                    v-on:click="exitStore(item.code_name)"
+                >
+                    <b-avatar thumbnail variant="transparent" :src=item.img_path class="mr-3"></b-avatar>
+                    <span class="mr-auto">{{ item.name }}</span>
+                    <b-badge variant="primary">{{ item.cost }}</b-badge>
+                </b-list-group-item>
+            </b-list-group>
         </div>
         <b-overlay :show="overlay.show" variant='transparent' opacity=0.85 class="col-2">
             <b-card v-if="!!game_instance" class="bg-transparent text-outline height=100% m-3 blur">
@@ -100,7 +124,16 @@
                 },
                 gameState: {
                     show: false,
+                    showRound: true,
+                    gameOver: false,
                     text: ''
+                },
+                store: {
+                    show: false,
+                    name: null,
+                    code_name: null,
+                    assortment: [],
+                    image: './src/assets/sanctuary_bg.png'
                 }
             }
         },
@@ -164,6 +197,22 @@
                     this.gameState.show = true;
                 }
                 this.showRoundOverlay();
+            },
+            exitStore(purchase) {
+                this.requestAction({'action': 'exit_' + this.store.code_name, 'purchase': purchase});
+                this.store.show = false;
+                this.overlay.show = false;
+                this.store.name = null;
+                this.store.code_name = null;
+                this.store.assortment = [];
+            },
+            gameOver() {
+                console.log('Game is over!');
+                this.gameState.gameOver = true;
+                this.overlay.show = true;
+            },
+            quitGame() {
+                this.$emit('quit_game');
             },
             keydownHandler(e) {
                 if (e.keyCode == 18) {

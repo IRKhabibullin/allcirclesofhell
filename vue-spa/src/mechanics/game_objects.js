@@ -74,8 +74,16 @@ class Hero extends BaseUnit {
         let coords = this.hex.toPoint();
         this.range_weapon = game_instance.svg.circle(5).fill({color: 'black', opacity: 0});
         this.spells = {};
+        this.skills = {};
+        this.items = {};
         hero_data.spells.forEach(spell => {
             this.spells[spell.code_name] = spell.effects;
+        });
+        hero_data.skills.forEach(skill => {
+            this.skills[skill.code_name] = skill.effects;
+        });
+        hero_data.items.forEach(item => {
+            this.items[item.code_name] = item.effects;
         });
         // suit
         // weapon
@@ -83,6 +91,15 @@ class Hero extends BaseUnit {
 
     update(unitData, actionData) {
         super.update(unitData, actionData);
+        unitData.spells.forEach(spell => {
+            this.spells[spell.code_name] = spell.effects;
+        });
+        unitData.skills.forEach(skill => {
+            this.skills[skill.code_name] = skill.effects;
+        });
+        unitData.items.forEach(item => {
+            this.items[item.code_name] = item.effects;
+        });
         this.game_instance.hero.range_attack_hexes = this.game_instance.grid.getHexesInRange(this.game_instance.hero.hex,
                                                                              this.game_instance.hero.attack_range + 1,
                                                                              ['empty', 'unit']);
@@ -186,14 +203,15 @@ class Unit extends BaseUnit {
 
 
 class Structure {
-    constructor(board, structureData) {
-        this.board = board;
+    constructor(game_instance, structureData) {
+        this.game_instance = game_instance;
 
         this.name = structureData.name;
         this.code_name = structureData.code_name;
         this.img_path = structureData.img_path;
-        this.hex = board.grid.hexes[structureData.position];
-        this.image = this.board.svg.image(this.img_path, 55, 55);
+        this.assortment = [];
+        this.hex = game_instance.grid.hexes[structureData.position];
+        this.image = this.game_instance.svg.image(this.img_path, 55, 55);
         let structure_coords = this.hex.toPoint();
         this.image.move(structure_coords.x, structure_coords.y);
 
@@ -206,6 +224,17 @@ class Structure {
         if (!!this.clickTargetHandler) {
             this.clickTargetHandler(this);
         }
+    }
+
+    open(assortment) {
+        this.assortment = assortment;
+
+        this.game_instance.component.store.name = this.name;
+        this.game_instance.component.store.code_name = this.code_name;
+        this.game_instance.component.store.assortment = this.assortment;
+        this.game_instance.component.store.show = true;
+        this.game_instance.component.overlay.show = true;
+//        todo add background image to shops
     }
 };
 

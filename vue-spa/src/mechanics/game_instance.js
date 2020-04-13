@@ -39,10 +39,13 @@ class GameInstance {
 
     handleAction(response) {
         console.log('response', response);
-        if (response.action_data.state == 'success') {
+        if (response.action_data.state != 'failed') {
             this.grid.update_hexes(response.board.hexes);
             this.hero.update(response.hero, response.action_data.hero_actions);
             this.update_units(response.units, response.action_data.units_actions);
+        }
+        if (response.action_data.state == 'game_over') {
+            this.component.gameOver();
         }
         this.actionManager.changeAction('move');
     }

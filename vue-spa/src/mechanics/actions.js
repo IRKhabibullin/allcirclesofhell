@@ -70,7 +70,7 @@ class ActionManager {
                     }
                     if (this.game_instance.grid.distance(structure.hex, this.game_instance.hero.hex) <= this.game_instance.hero.move_range) {
                         this.actions.move.resetPath();
-                        this.game_instance.component.requestAction({'action': 'exit',
+                        this.game_instance.component.requestAction({'action': structure.code_name,
                                                                     'target_hex': structure.hex.q + ';' + structure.hex.r});
                     } else {
                         this.actions.move.goLongPath(structure.hex);
@@ -243,7 +243,7 @@ class ActionManager {
                     }
                 }
             },
-            'shield_bash': {
+            shield_bash: {
                 set: () => {
                     this.setTargets(this.game_instance.grid.getHexesInRange(this.game_instance.hero.hex, 1, ['empty', 'unit', 'obstacle']));
                     this.actionData.hexes_to_bash = [];
@@ -335,7 +335,7 @@ class ActionManager {
                     });
                 }
             },
-            'blink': {
+            blink: {
                 set: () => {
                     this.setTargets(this.game_instance.grid.getHexesInRange(this.game_instance.hero.hex, 3, ['empty']), false);
                 },
@@ -355,6 +355,12 @@ class ActionManager {
                 actionHandler: (source, actionSteps) => {
                     let target_hex = this.game_instance.grid.hexes[actionSteps[0].target_hex];
                     source.move(target_hex, 10);
+                }
+            },
+            sanctuary: {
+                actionHandler: (source, actionsSteps) => {
+                    let assortment = actionsSteps[0].assortment;
+                    this.game_instance.structures['sanctuary'].open(assortment);
                 }
             }
         }

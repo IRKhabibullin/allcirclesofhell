@@ -1,7 +1,8 @@
+from random import shuffle
 from typing import TYPE_CHECKING, Dict, List
 from game.mechanics.constants import slotStructure
 from game.mechanics.game_objects import InteractiveGameObject
-from game.models import GameStructureModel
+from game.models import GameStructureModel, SpellModel, SkillModel
 
 if TYPE_CHECKING:
     from game.mechanics.game_instance import GameInstance
@@ -18,21 +19,40 @@ class BaseStructure(InteractiveGameObject):
     def __str__(self):
         return slotStructure
 
+    @property
+    def assortment(self):
+        return self._object.assortment
+
 
 class Exit(BaseStructure):
     """Exit from round"""
     pass
 
 
-class Shop(BaseStructure):
-    """Some shop"""
-    pass
+class Sanctuary(BaseStructure):
+    """Structure where spells and skills can be learnt"""
+    def generate_assortment(self):
+        """Generates assortment of skills and spells"""
+        items_attributes = ['code_name', 'name', 'cost', 'description', 'img_path']
+        stock = []
+        for _spell in SpellModel.objects.all():
+            stock.append({
+                'type': 'spell',
+                **{key: getattr(_spell, key) for key in items_attributes}
+            })
+        for _skill in SkillModel.objects.all():
+            stock.append({
+                'type': 'skill',
+                **{key: getattr(_skill, key) for key in items_attributes}
+            })
+        shuffle(stock)
+        self._object.assortment = stock[:self._object.assortment_range]
 
 
 class StructuresManager:
     _structures_mapping: Dict[str, BaseStructure.__class__] = {
         'exit': Exit,
-        'shop': Shop,
+        'sanctuary': Sanctuary,
     }
 
     @classmethod

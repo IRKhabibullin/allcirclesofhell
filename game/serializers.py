@@ -1,6 +1,6 @@
 from rest_framework.fields import DictField, ListField
 
-from game.models import HeroModel, ItemModel, GameModel, UnitModel, SpellModel, GameStructureModel
+from game.models import HeroModel, ItemModel, GameModel, UnitModel, SpellModel, GameStructureModel, SkillModel
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
@@ -9,6 +9,11 @@ class ItemSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = ItemModel
         fields = ['name', 'cost', 'effects', 'description', 'img_path']
+
+    effects = serializers.SerializerMethodField('item_effects')
+
+    def item_effects(self, item):
+        return {x.effect.code_name: x.value for x in item.itemeffectmodel_set.all()}
 
 
 class SpellSerializer(serializers.HyperlinkedModelSerializer):
@@ -22,15 +27,28 @@ class SpellSerializer(serializers.HyperlinkedModelSerializer):
         return {item.effect.code_name: item.value for item in spell.spelleffectmodel_set.all()}
 
 
+class SkillSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = SkillModel
+        fields = ['code_name', 'name', 'cost', 'effects', 'description', 'img_path']
+
+    effects = serializers.SerializerMethodField('skill_effects')
+
+    def skill_effects(self, skill):
+        return {item.effect.code_name: item.value for item in skill.skilleffectmodel_set.all()}
+
+
 class HeroSerializer(serializers.HyperlinkedModelSerializer):
     weapon = ItemSerializer(read_only=True)
     suit = ItemSerializer(read_only=True)
     spells = SpellSerializer(read_only=True, many=True)
+    skills = SkillSerializer(read_only=True, many=True)
+    items = ItemSerializer(read_only=True, many=True)
 
     class Meta:
         model = HeroModel
-        fields = ['name', 'health', 'damage', 'move_range', 'attack_range', 'armor', 'skills', 'spells', 'img_path',
-                  'suit', 'weapon', 'position', 'moves', 'attack_hexes']
+        fields = ['name', 'health', 'damage', 'move_range', 'attack_range', 'armor', 'skills', 'spells', 'items',
+                  'img_path', 'suit', 'weapon', 'position', 'moves', 'attack_hexes']
 
     # position = serializers.SerializerMethodField('hero_position')
     #
