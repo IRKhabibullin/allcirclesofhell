@@ -1,3 +1,5 @@
+from typing import Dict
+
 from ..models import GameModel
 from django.contrib.auth.models import User
 from game.mechanics.game_instance import GameInstance
@@ -21,7 +23,7 @@ class GameManager(object):
             raise Exception("This class is a singleton!")
         else:
             GameManager.__instance = self
-        self.game_instances = {}
+        self.game_instances: Dict[str, GameInstance] = {}
 
     def new_game(self, user: User, hero: dict) -> int:
         """Create new game and bind user to it. Returns game id"""
@@ -38,20 +40,19 @@ class GameManager(object):
             self.game_instances[game_id] = game_instance
             return game_instance
 
-    def delete_game(self, game_id: int) -> bool:
+    def delete_game(self, game_id: str) -> bool:
         if game_id in self.game_instances:
-            _game = self.game_instances[game_id]
+            _game = self.game_instances[game_id]._game
             del self.game_instances[game_id]
         else:
             _game = GameModel.objects.filter(pk=game_id)
             if not _game:
                 return False
             _game = _game[0]
-        del_count, del_objects = _game.hero.delete(keep_parents=False)
+        del_count, del_objects = _game.hero.delete()
         # del_count, del_objects = self.game_instances[game_id].delete()
         print(f'Deleted {del_count} objects: {del_objects}')
         return bool(del_count)
-
 
     @staticmethod
     def get_games_by_user(user: User) -> list:

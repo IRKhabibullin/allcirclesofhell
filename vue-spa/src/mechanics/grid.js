@@ -223,7 +223,7 @@ class HexGrid {
             neighbors.forEach(next => {
                 if (next.slot != 'empty') {
                     // fixme for now only units have ids in hexes as numbers. But need to fix it later maybe
-                    if (!(next.slot == 'unit' && next == target_hex)) {
+                    if (!(['unit', 'structure'].includes(next.slot) && next == target_hex)) {
                         return;
                     }
                 }

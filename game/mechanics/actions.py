@@ -4,6 +4,7 @@ Functions for actions
 from collections import defaultdict
 from typing import List, Dict, TYPE_CHECKING
 
+from game.mechanics.game_sturctures import Exit, Sanctuary
 from game.models import SpellModel
 from game.mechanics.constants import slotEmpty, slotObstacle
 from game.mechanics.game_objects import Hero, BaseGameObject, BaseUnitObject
@@ -15,9 +16,13 @@ if TYPE_CHECKING:
 
 class ActionResponse:
     """Results of game turn"""
+    FAILED = 'failed'
+    SUCCESS = 'success'
+    GAME_OVER = 'game_over'
+
     def __init__(self, name: str):
         self.name: str = name
-        self.state: str = 'success'
+        self.state: str = self.SUCCESS
         # actions made by units
         self.hero_actions: Dict[str: list] = {}
         self.units_actions: Dict[Dict[str: list]] = defaultdict(dict)
@@ -28,6 +33,7 @@ class ActionResponse:
                 'units_actions': self.units_actions}
 
 
+# region base actions
 class Action:
     """Base class for all game actions"""
     action_name: str
@@ -44,24 +50,6 @@ class Action:
 
     def execute(self) -> Dict[str, List]:
         """Main method to execute action"""
-        raise NotImplementedError
-
-
-class SpellAction(Action):
-    """Base class for all spell actions"""
-    action_name: str
-
-    def __init__(self, game: 'GameInstance', action_data: dict):
-        if not isinstance(action_data['source'], BaseUnitObject):
-            raise RuntimeError(f'This game object is muggle')
-        super().__init__(game, action_data)
-        try:
-            self.spell = self.source.spells.get(code_name=self.action_name)
-        except SpellModel.DoesNotExist:
-            raise RuntimeError('Action not allowed')
-        self.spell_effects = {item.effect.code_name: item.value for item in self.spell.spelleffectmodel_set.all()}
-
-    def execute(self) -> Dict[str, List]:
         raise NotImplementedError
 
 
@@ -151,7 +139,27 @@ class RangeAttack(Action):
         if damage_dealt:
             action_step['damage'] = damage_dealt
         return {self.action_name: [action_step]}
-    
+# endregion base actions
+
+
+# region spell actions
+class SpellAction(Action):
+    """Base class for all spell actions"""
+    action_name: str
+
+    def __init__(self, game: 'GameInstance', action_data: dict):
+        if not isinstance(action_data['source'], BaseUnitObject):
+            raise RuntimeError(f'This game object is muggle')
+        super().__init__(game, action_data)
+        try:
+            self.spell = self.source.spells.get(code_name=self.action_name)
+        except SpellModel.DoesNotExist:
+            raise RuntimeError('Action not allowed')
+        self.spell_effects = {item.effect.code_name: item.value for item in self.spell.spelleffectmodel_set.all()}
+
+    def execute(self) -> Dict[str, List]:
+        raise NotImplementedError
+
 
 class PathOfFire(SpellAction):
     """Path of fire spell"""
@@ -273,6 +281,83 @@ class Blink(SpellAction):
             raise RuntimeError('Cant move there')
         self.game.move_object(self.source, self.target_hex)
         return {self.action_name: [{'target_hex': self.target_hex}]}
+# endregion spell actions
+
+
+# region structures actions
+class ExitRound(Action):
+    """Simple move"""
+    action_name = 'exit'
+
+    def __init__(self, game: 'GameInstance', action_data):
+        if not isinstance(action_data['source'], Hero):
+            raise RuntimeError(f'This game object can not perform action {self.action_name}')
+        super().__init__(game, action_data)
+
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
+        return []
+
+    def execute(self) -> Dict[str, List]:
+        if self.game.distance(self.source.position, self.target_hex) > self.source.move_range:
+            raise RuntimeError('Target is too far')
+        structure = self.game.get_object_by_position(self.target_hex)
+        if isinstance(structure, Exit):
+            self.game.exit_round()
+            return {self.action_name: []}
+        raise RuntimeError('Failed to enter structure')
+
+
+class EnterSanctuary(Action):
+    """Simple move"""
+    action_name = 'sanctuary'
+
+    def __init__(self, game: 'GameInstance', action_data):
+        if not isinstance(action_data['source'], Hero):
+            raise RuntimeError(f'This game object can not perform action {self.action_name}')
+        super().__init__(game, action_data)
+
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
+        return []
+
+    def execute(self) -> Dict[str, List]:
+        if self.game.distance(self.source.position, self.target_hex) > self.source.move_range:
+            raise RuntimeError('Target is too far')
+        structure = self.game.get_object_by_position(self.target_hex)
+        if isinstance(structure, Sanctuary):
+            structure.generate_assortment()
+            return {self.action_name: [{'assortment': structure.assortment}]}
+        raise RuntimeError('Failed to enter structure')
+
+
+class ExitSanctuary(Action):
+    """Simple move"""
+    action_name = 'exit_sanctuary'
+
+    def __init__(self, game: 'GameInstance', action_data):
+        if not isinstance(action_data['source'], Hero):
+            raise RuntimeError(f'This game object can not perform action {self.action_name}')
+        super().__init__(game, action_data)
+        self.purchase = action_data.get('purchase')
+        self.target_hex = self.game.structures['sanctuary'].position.id
+
+    @classmethod
+    def available_targets(cls, game: 'GameInstance', unit: 'BaseUnitObject'):
+        return []
+
+    def execute(self) -> Dict[str, List]:
+        if self.game.distance(self.source.position, self.target_hex) > self.source.move_range:
+            raise RuntimeError('Target is too far')
+        structure = self.game.get_object_by_position(self.target_hex)
+        if isinstance(structure, Sanctuary):
+            # attach to hero skill/spell from action_data
+            for item in structure.assortment:
+                if self.purchase == item['code_name']:
+                    self.game.add_ability(item['type'], item['code_name'])
+                    return {}
+        raise RuntimeError('No such ability')
+# endregion structures actions
 
 
 class ActionManager:
@@ -285,6 +370,9 @@ class ActionManager:
         'path_of_fire': PathOfFire,
         'shield_bash': ShieldBash,
         'blink': Blink,
+        'exit': ExitRound,
+        'sanctuary': EnterSanctuary,
+        'exit_sanctuary': ExitSanctuary,
     }
 
     @classmethod

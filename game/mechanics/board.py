@@ -1,6 +1,6 @@
 from random import random
 from typing import TYPE_CHECKING, Dict, List
-from game.mechanics.constants import BOARD_RADIUS, slotEmpty, slotObstacle
+from game.mechanics.constants import BOARD_RADIUS, slotEmpty, slotObstacle, slotStructure
 from game.mechanics.game_objects import Obstacle
 
 if TYPE_CHECKING:
@@ -33,16 +33,15 @@ class Hex:
         """Distance from current hex to the center of board"""
         return max(abs(self.x), abs(self.y), abs(self.z))
 
+    def as_dict(self) -> dict:
+        """Serialized representation"""
+        return {'q': self.q, 'r': self.r, 'slot': str(self.slot)}
+
     def __str__(self):
         return f'Hex({self.id}|{self.slot})'
 
     def __repr__(self):
         return f'Hex({self.id}|{self.slot})'
-
-    def as_dict(self) -> dict:
-        """Serialized representation"""
-
-        return {'q': self.q, 'r': self.r, 'slot': str(self.slot)}
 
 
 class Board:
@@ -74,13 +73,15 @@ class Board:
         self.add(start_hex)
         create_neighbors(start_hex)
 
-    def load_state(self, hexes: list):
-        """Load board from saved state"""
-        for _hex_data in hexes:
-            _hex = Hex(_hex_data['q'], _hex_data['r'])
-            if _hex_data['slot'] == slotObstacle:
-                _hex.slot = Obstacle()
-            self.add(_hex)
+    def __getitem__(self, key: str) -> Hex:
+        return self.__hexes[key]
+
+    def __contains__(self, _hex: str) -> bool:
+        return _hex in self.__hexes
+
+    def __iter__(self):
+        for _hex in self.__hexes:
+            yield _hex
 
     def add(self, _hex: Hex) -> bool:
         """
@@ -92,23 +93,21 @@ class Board:
             return True
         return False
 
-    def __getitem__(self, key: str) -> Hex:
-        return self.__hexes[key]
-
     def get(self, key: str, default_value=None) -> Hex:
         """Returns hex by its key."""
         return self.__hexes.get(key, default_value)
 
-    def __contains__(self, _hex: str) -> bool:
-        return _hex in self.__hexes
-
-    def __iter__(self):
-        for _hex in self.__hexes:
-            yield _hex
-
     def items(self):
         """Returns items of dict with all hexes in board"""
         return self.__hexes.items()
+
+    def load_state(self, hexes: list):
+        """Load board from saved state"""
+        for _hex_data in hexes:
+            _hex = Hex(_hex_data['q'], _hex_data['r'])
+            if _hex_data['slot'] == slotObstacle:
+                _hex.slot = Obstacle()
+            self.add(_hex)
 
     def get_neighbors(self, _hex: Hex) -> List[Hex]:
         """

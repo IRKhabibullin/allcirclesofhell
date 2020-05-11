@@ -1,27 +1,65 @@
 <template>
     <div class="row d-flex justify-content-between">
-        <svg id="drawing" class="text-left m-4 col-6"></svg>
-        <div class="col-2 height=100%">
-            <b-card v-if="!!game_instance && game_instance.current_unit" v-show="game_instance.show_unit_card && game_instance.altPressed">
+        <b-overlay :show="overlay.show" variant="transparent" class="col-5">
+            <svg id="drawing" class="text-left m-4"></svg>
+
+            <template v-slot:overlay>
+                <div class="rounded text-center">
+                    <p v-show="gameState.show" class="p-1 font-weight-bold text-white text-outline">{{ gameState.text }}</p>
+                    <p v-show="gameState.showRound"class="p-1 font-weight-bold text-white text-outline">Round {{ game_round }}</p>
+                    <p v-show="gameState.gameOver" class="p-1 font-weight-bold text-white text-outline">Game over</p>
+                    <b-button v-show="gameState.gameOver" variant="danger" v-on:click="quitGame()">Exit</b-button>
+                </div>
+            </template>
+        </b-overlay>
+        <div class="col-2 height=100% text-outline">
+            <b-card
+                v-if="!!game_instance && game_instance.current_unit"
+                v-show="game_instance.show_unit_card && game_instance.altPressed"
+                style="background-color: transparent;"
+                class="blur"
+            >
                 <b-card-title>{{ game_instance.current_unit.name }}</b-card-title>
                 <b-list-group>
-                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                    <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                         Health
                         <b-badge variant="primary" pill>{{ game_instance.current_unit.health }}</b-badge>
                     </b-list-group-item>
-                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                    <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                         Damage
                         <b-badge variant="primary" pill>{{ game_instance.current_unit.damage }}</b-badge>
                     </b-list-group-item>
-                    <b-list-group-item class="border-0 p-0 d-flex justify-content-between align-items-center">
+                    <b-list-group-item class="bg-transparent border-0 p-0 d-flex justify-content-between align-items-center">
                         Armor
                         <b-badge variant="primary" pill>{{ game_instance.current_unit.armor }}</b-badge>
                     </b-list-group-item>
                 </b-list-group>
             </b-card>
         </div>
-        <div class="col-2 height=100% m-4">
-            <b-card v-if="!!game_instance">
+        <div class="col-2" v-show="store.show">
+            <b-card class="bg-transparent" overlay :img-src=store.image img-top>
+                <div class="d-flex justify-content-end">
+                    <h5>{{ store.name }}</h5>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <b-button variant="outline-danger" v-on:click="exitStore()">Exit</b-button>
+                </div>
+            </b-card>
+            <b-list-group v-for="item in this.store.assortment">
+                <b-list-group-item
+                    button
+                    class="d-flex align-items-center bg-transparent text-outline blur"
+                    v-bind:title="item.description"
+                    v-on:click="exitStore(item.code_name)"
+                >
+                    <b-avatar thumbnail variant="transparent" :src=item.img_path class="mr-3"></b-avatar>
+                    <span class="mr-auto">{{ item.name }}</span>
+                    <b-badge variant="primary">{{ item.cost }}</b-badge>
+                </b-list-group-item>
+            </b-list-group>
+        </div>
+        <b-overlay :show="overlay.show" variant='transparent' opacity=0.85 class="col-2">
+            <b-card v-if="!!game_instance" class="bg-transparent text-outline height=100% m-3 blur">
                 <b-card-title>Actions</b-card-title>
                 <b-list-group class="align-items-center">
                     <b-button
@@ -56,7 +94,11 @@
                     </b-button>
                 </b-list-group>
             </b-card>
-        </div>
+
+            <template v-slot:overlay>
+                <p></p>
+            </template>
+        </b-overlay>
     </div>
 </template>
 
@@ -74,7 +116,25 @@
             return {
                 game_data: this.initial_game_data,
                 svg: null,
-                game_instance: null
+                game_round: null,
+                game_instance: null,
+                overlay: {
+                    show: false,
+                    timeout: null
+                },
+                gameState: {
+                    show: false,
+                    showRound: true,
+                    gameOver: false,
+                    text: ''
+                },
+                store: {
+                    show: false,
+                    name: null,
+                    code_name: null,
+                    assortment: [],
+                    image: './src/assets/sanctuary_bg.png'
+                }
             }
         },
         destroyed() {
@@ -82,7 +142,9 @@
             window.removeEventListener('keyup', this.keyupHandler);
         },
         mounted() {
-            console.log('initial', this.initial_game_data);
+            console.log('initial data', this.initial_game_data);
+            this.game_round = this.initial_game_data.round;
+            this.showRoundOverlay();
             this.svg = SVG(document.getElementById('drawing'));
             this.game_instance = new GameInstance(this, this.svg, this.game_data);
             window.addEventListener('keydown', this.keydownHandler);
@@ -99,10 +161,58 @@
             handleAction(actionData) {
                 this.game_instance.handleAction(actionData);
             },
-            updateGame(gameData) {
+            updateGame(gameData, gameState) {
+                this.game_round = gameData.round;
+                this.gameStateUpdated(gameState);
                 this.svg.clear();
                 this.game_data = gameData;
                 this.game_instance = new GameInstance(this, this.svg, this.game_data);
+            },
+            clearTimeout() {
+                if (this.overlay.timeout) {
+                    clearTimeout(this.overlay.timeout);
+                    this.overlay.timeout = null;
+                }
+            },
+            setTimeout(callback) {
+                this.clearTimeout();
+                this.overlay.timeout = setTimeout(() => {
+                    this.clearTimeout();
+                    callback();
+                }, 1500)
+            },
+            showRoundOverlay() {
+                this.overlay.show = true;
+                this.setTimeout(() => {
+                    this.overlay.show = false;
+                    this.gameState.show = false;
+                })
+            },
+            gameStateUpdated(state) {
+                if (state == 'save') {
+                    this.gameState.text = 'Game is saved';
+                    this.gameState.show = true;
+                } else if (state == 'load') {
+                    this.gameState.text = 'Game is loaded';
+                    this.gameState.show = true;
+                }
+                this.showRoundOverlay();
+            },
+            exitStore(purchase) {
+                this.requestAction({'action': 'exit_' + this.store.code_name, 'purchase': purchase});
+                this.store.show = false;
+                this.overlay.show = false;
+                this.store.name = null;
+                this.store.code_name = null;
+                this.store.assortment = [];
+            },
+            gameOver() {
+                console.log('Game is over!');
+                this.gameState.gameOver = true;
+                this.overlay.show = true;
+            },
+            quitGame() {
+                this.$emit('quit_game');
             },
             keydownHandler(e) {
                 if (e.keyCode == 18) {

@@ -1,4 +1,4 @@
-import {Hero, Unit} from './game_objects';
+import {Hero, Unit, Structure} from './game_objects';
 import HexGrid from './grid';
 import ActionManager from './actions';
 
@@ -21,6 +21,10 @@ class GameInstance {
 
         this.hero = new Hero(this, game_data.hero);
         this.units = {};
+        this.structures = {};
+        for (var structure_id in game_data.structures) {
+            this.structures[structure_id] = new Structure(this, game_data.structures[structure_id]);
+        }
         for (var unit_id in game_data.units) {
             this.units[unit_id] = new Unit(this, game_data.units[unit_id]);
         }
@@ -35,14 +39,15 @@ class GameInstance {
 
     handleAction(response) {
         console.log('response', response);
-        if (response.action_data.state != 'success') {
-            this.actionManager.changeAction('move');
-        } else {
+        if (response.action_data.state != 'failed') {
             this.grid.update_hexes(response.board.hexes);
             this.hero.update(response.hero, response.action_data.hero_actions);
             this.update_units(response.units, response.action_data.units_actions);
-            this.actionManager.changeAction('move');
         }
+        if (response.action_data.state == 'game_over') {
+            this.component.gameOver();
+        }
+        this.actionManager.changeAction('move');
     }
 
     update_units(new_units, units_actions) {

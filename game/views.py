@@ -59,8 +59,10 @@ class GameViewSet(viewsets.ViewSet):
         """Removes initialized game_instance from game_manager"""
         # need to pass not game_id but uuid. It removes bug, when same game initialized in two browser tabs
         # also need to handle case when browser tab is closed
+        print(f'trying to close game {request.data["game_id"]}')
         removed = str(request.data['game_id']) in self.gm.game_instances
         if removed:
+            self.gm.game_instances[str(request.data['game_id'])].before_closed()
             del self.gm.game_instances[str(request.data['game_id'])]
         return Response({'removed': removed})
 
@@ -73,6 +75,7 @@ class GameViewSet(viewsets.ViewSet):
 
     def retrieve(self, request, pk=None):
         """Get game by given id"""
+        print(f'trying to load game {pk}')
         game_instance = self.gm.get_game(str(pk))
         game_instance.start_round()
         serializer = GameInstanceSerializer(game_instance)
@@ -100,4 +103,6 @@ class GameAction(APIView):
         game_instance = self.gm.get_game(str(request.data['game_id']))
         action_response: ActionResponse = game_instance.make_turn(request.data)
         response_data = {**GameInstanceSerializer(game_instance).data, 'action_data': action_response.to_dict()}
+        if action_response.state == ActionResponse.GAME_OVER:
+            self.gm.delete_game(str(request.data['game_id']))
         return Response(response_data)

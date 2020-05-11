@@ -28,30 +28,53 @@ class EffectModel(HandbookModel):
     # trigger = models.?
 
 
-class SkillModel(HandbookModel):
-    """Table listing all skills available in game"""
-    requirements = models.ManyToManyField('self', blank=True)
-    effects = models.ManyToManyField(EffectModel, blank=True)
+class AbilityModel(HandbookModel):
+    """Model for items/skills/spells models"""
     description = models.TextField(default='Not provided')
     # school = models.IntegerField(default=0) it must be enum field
     img_path = models.TextField(default='./src/assets/skill.jpeg')
 
+    class Meta:
+        abstract = True
 
-class ItemModel(HandbookModel):
+
+class SkillModel(AbilityModel):
+    """Table listing all skills available in game"""
+    requirements = models.ManyToManyField('self', blank=True)
+    effects = models.ManyToManyField(EffectModel, through='SkillEffectModel', through_fields=('skill', 'effect'), blank=True)
+
+
+class SkillEffectModel(models.Model):
+    """Intermediary table to bind spells and effects"""
+    skill = models.ForeignKey(SkillModel, on_delete=models.CASCADE)
+    effect = models.ForeignKey(EffectModel, on_delete=models.CASCADE)
+    value = models.FloatField(default=0.0)
+
+    def __str__(self):
+        return f'{self.skill.code_name}.{self.effect.code_name}'
+
+
+class ItemModel(AbilityModel):
     """Table listing all items available in game"""
     cost = models.IntegerField()
-    effects = models.ManyToManyField(EffectModel, blank=True)
-    description = models.TextField(default='Not provided')
-    img_path = models.TextField(default='./src/assets/item.jpeg')
+    effects = models.ManyToManyField(EffectModel, through='ItemEffectModel', through_fields=('item', 'effect'), blank=True)
 
 
-class SpellModel(HandbookModel):
+class ItemEffectModel(models.Model):
+    """Intermediary table to bind spells and effects"""
+    item = models.ForeignKey(ItemModel, on_delete=models.CASCADE)
+    effect = models.ForeignKey(EffectModel, on_delete=models.CASCADE)
+    value = models.FloatField(default=0.0)
+
+    def __str__(self):
+        return f'{self.item.code_name}.{self.effect.code_name}'
+
+
+class SpellModel(AbilityModel):
     """Table listing all spells available in game"""
+    # todo add level requirement to spells, skills and items, so they wont appear in game until hero reached level
     cost = models.IntegerField()
     effects = models.ManyToManyField(EffectModel, through='SpellEffectModel', through_fields=('spell', 'effect'), blank=True)
-    description = models.TextField(default='Not provided')
-    # school = models.IntegerField(default=0) it must be enum field
-    img_path = models.TextField(default='./src/assets/spell.jpeg')
 
 
 class SpellEffectModel(models.Model):
@@ -64,6 +87,15 @@ class SpellEffectModel(models.Model):
         return f'{self.spell.code_name}.{self.effect.code_name}'
 
 
+class GameStructureModel(HandbookModel):
+    """Table listing game structures"""
+    img_path = models.TextField(default='./src/assets/building.png')
+    round_frequency = models.IntegerField(default=1)  # structure will appear every <round_frequency> rounds
+    assortment_range = models.IntegerField(default=3)  # number of items in shop/sanctuary
+    position = None
+    assortment = []
+
+
 class BaseUnitModel(models.Model):
     """Base model for units, heroes etc"""
     health = models.IntegerField(default=50)
@@ -73,6 +105,7 @@ class BaseUnitModel(models.Model):
     armor = models.IntegerField(default=2)
     skills = models.ManyToManyField(SkillModel, blank=True)
     spells = models.ManyToManyField(SpellModel, blank=True)
+    items = models.ManyToManyField(ItemModel, blank=True)
     img_path = models.TextField(default='')
     position = None
     moves = []

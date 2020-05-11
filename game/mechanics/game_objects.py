@@ -1,7 +1,7 @@
 from typing import List, TYPE_CHECKING, Dict, Tuple
 
 from game.mechanics.constants import slotObstacle, slotHero, slotUnit
-from game.models import HeroModel, BaseUnitModel
+from game.models import HeroModel, BaseUnitModel, AbilityModel
 
 if TYPE_CHECKING:
     from django.db import models
@@ -35,6 +35,16 @@ class BaseUnitObject(InteractiveGameObject):
             'attack',
             *[spell.code_name for spell in self._object.spells.all()],
         ]
+        self.ability_map = {
+            'spell': self._object.spells,
+            'skill': self._object.skills,
+            'item': self._object.items
+        }
+        self.unsaved_abilities = {
+            'spell': [],
+            'skill': [],
+            'item': [],
+        }
 
     @property
     def name(self):
@@ -90,6 +100,19 @@ class BaseUnitObject(InteractiveGameObject):
                     best_action, best_target = action, target
         return best_action, best_target.id
 
+    def add_ability(self, ability_type: str, ability: AbilityModel):
+        self.ability_map[ability_type].add(ability)
+        self.unsaved_abilities[ability_type].append(ability)
+
+    def remove_unsaved_abilities(self):
+        for ability_type in self.unsaved_abilities:
+            if self.unsaved_abilities[ability_type]:
+                [self._object.spells.remove(ability) for ability in self.unsaved_abilities[ability_type]]
+
+    def keep_unsaved_abilities(self):
+        for ability_type in self.unsaved_abilities:
+            self.unsaved_abilities[ability_type].clear()
+
     def receive_damage(self, damage):
         self._object.health -= damage
 
@@ -101,7 +124,7 @@ class Hero(BaseUnitObject):
 
     def __init__(self, object_model: HeroModel, **kwargs):
         super().__init__(object_model, **kwargs)
-        self.priority_target: str = slotUnit
+        self.enemy_target: str = slotUnit
 
     def __str__(self):
         return slotHero

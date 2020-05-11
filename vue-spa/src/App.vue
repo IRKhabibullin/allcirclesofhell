@@ -1,7 +1,7 @@
 <template>
-    <div id="app">
-        <main class="row">
-            <aside class="col-2 px-0 ml-4 mt-2">
+    <div id="app" style="background-image:url(./src/assets/background.jpg); background-size: contain;">
+        <main class="row m-0">
+            <aside class="col-2 px-0 pl-4 pt-2">
                 <div class="text-left" v-if="game_state != 'logged_out'">
                     <b-dropdown id="dropdown-1" text="Settings" class="m-md-2">
                         <b-dropdown-item disabled>{{ this.username }}</b-dropdown-item>
@@ -23,13 +23,15 @@
                 <CharacterInfo :hero="game_data.hero" v-else-if="game_state == 'game_loaded'"></CharacterInfo>
             </aside>
             <Playground
+                class="col-10 p-0 m-0"
                 :initial_game_data="game_data"
                 v-if="game_state == 'game_loaded'"
-                class="col-10 px-0"
                 @game_action="requestAction"
+                @quit_game="setLoginState('logged_in')"
                 @close_game="closeGame"
                 ref="playground"
-            ></Playground>
+            >
+            </Playground>
         </main>
     </div>
 </template>
@@ -93,7 +95,9 @@
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }
                 })
-                .then(response => {})
+                .then(response => {
+                    this.$refs.playground.gameStateUpdated('save');
+                })
                 .catch(error => {
                     console.log('Failed to save state', error);
                 })
@@ -110,7 +114,7 @@
                 .then(response => {
                     this.game_data = response.data;
                     console.log('Loaded state', this.game_data);
-                    this.$refs.playground.updateGame(response.data);
+                    this.$refs.playground.updateGame(response.data, 'load');
                 })
                 .catch(error => {
                     console.log('Failed to load state', error);
@@ -145,7 +149,12 @@
                 })
                 .then(response => {
                     this.game_data.hero = response.data.hero;
-                    this.$refs.playground.handleAction(response.data);
+                    if (response.data.action_data.action == 'exit' && response.data.action_data.state == 'success') {
+                        this.$refs.playground.updateGame(response.data);
+                        // this.showAlert('You have passed to a new round!');
+                    } else {
+                        this.$refs.playground.handleAction(response.data);
+                    }
                 })
                 .catch(error => {
                     console.log('Failed to handle action', error);
@@ -160,7 +169,10 @@
                        Authorization: 'Token ' + localStorage.getItem('token')
                     }
                 })
-                .then(response => {})
+                .then(response => {
+                    this.game_data = null;
+                    this.game_state = 'logged_in';
+                })
                 .catch(error => {
                     console.log('Failed to close game', error);
                 })
